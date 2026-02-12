@@ -1,14 +1,24 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import "./AppLayout.css";
 
 const AppLayout = () => {
+  const location = useLocation();
+  const isTasksPage = location.pathname.startsWith("/tasks");
+
   return (
     <div className="app-layout">
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <span className="logo-icon">⬡</span>
+          <span className="logo-icon">⚡</span>
           <h2>Zync</h2>
         </div>
+
+        {isTasksPage && (
+          <div className="sidebar-new-task">
+            <button className="btn-new-task">+ New Task</button>
+          </div>
+        )}
+
         <nav className="sidebar-nav">
           <NavLink
             to="/"
@@ -64,7 +74,9 @@ const AppLayout = () => {
           <div className="user-profile">
             <div className="avatar"></div>
             <div className="user-info">
-              <p className="name">Alex M.</p>
+              <p className="name">
+                {isTasksPage ? "Sarah Student" : "Alex M."}
+              </p>
               <p className="plan">Free Plan</p>
             </div>
           </div>

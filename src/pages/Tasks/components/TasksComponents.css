@@ -1,0 +1,444 @@
+/* ─── Tasks Board Header ─────────────────────────────────── */
+
+.tasks-board-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.tasks-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tasks-board-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.team-avatars {
+  display: flex;
+  align-items: center;
+  gap: -4px;
+}
+
+.team-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  margin-left: -6px;
+}
+
+.team-avatar:first-child {
+  margin-left: 0;
+}
+
+.team-more {
+  font-size: 0.75rem;
+  color: #999;
+  margin-left: 4px;
+  font-weight: 500;
+}
+
+.tasks-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #f5f5f5;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+}
+
+.search-icon {
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.search-input {
+  border: none;
+  background: transparent;
+  font-size: 0.8rem;
+  color: #333;
+  outline: none;
+  width: 140px;
+  font-family: inherit;
+}
+
+.search-input::placeholder {
+  color: #bbb;
+}
+
+.notification-btn {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0.3rem;
+}
+
+/* ─── Quick Add Bar ──────────────────────────────────────── */
+
+.quick-add-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #ffffff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 0.65rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.quick-add-icon {
+  color: #999;
+  font-size: 1rem;
+  font-weight: 300;
+}
+
+.quick-add-input {
+  border: none;
+  background: transparent;
+  font-size: 0.85rem;
+  color: #333;
+  outline: none;
+  flex: 1;
+  font-family: inherit;
+}
+
+.quick-add-input::placeholder {
+  color: #ccc;
+}
+
+/* ─── Kanban Board ───────────────────────────────────────── */
+
+.kanban-board {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.kanban-column {
+  min-width: 260px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.kanban-column-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-left: 0.25rem;
+}
+
+.kanban-column-count {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.kanban-column-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.kanban-column-body {
+  background: #f5f5f5;
+  border-radius: 12px;
+  padding: 0.75rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 300px;
+}
+
+/* ─── Kanban Card ────────────────────────────────────────── */
+
+.kanban-card {
+  background: #ffffff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 0.85rem;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+
+.kanban-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.kanban-card-top {
+  margin-bottom: 0.4rem;
+}
+
+.kanban-category-tag {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kanban-card-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.kanban-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.kanban-card-date {
+  font-size: 0.7rem;
+  color: #999;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.kanban-card-date.urgent {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.kanban-card-priority {
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* Progress bar on card */
+.kanban-progress-track {
+  margin-top: 0.6rem;
+  height: 4px;
+  background: #eee;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.kanban-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Add task button */
+.kanban-add-task-btn {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  text-align: center;
+  transition: color 0.15s;
+}
+
+.kanban-add-task-btn:hover {
+  color: #333;
+}
+
+/* ─── View Toggle ────────────────────────────────────────── */
+
+.view-toggle {
+  display: flex;
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.view-toggle-btn {
+  background: none;
+  border: none;
+  padding: 0.35rem 0.7rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: #999;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.view-toggle-btn.active {
+  background: #ffffff;
+  color: #1a1a1a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* ─── Priority View ──────────────────────────────────────── */
+
+.priority-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.priority-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.priority-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 0.25rem;
+}
+
+.priority-group-badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #fff;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+}
+
+.priority-group-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.priority-group-count {
+  font-size: 0.7rem;
+  color: #bbb;
+  font-weight: 500;
+}
+
+.priority-group-list {
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.priority-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.priority-row:last-child {
+  border-bottom: none;
+}
+
+.priority-row:hover {
+  background: #f5f5f5;
+}
+
+.priority-row-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.priority-row-checkbox {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.priority-row-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.priority-row-tag {
+  font-size: 0.55rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.priority-row-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.priority-row-status {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.priority-row-date {
+  font-size: 0.7rem;
+  color: #999;
+  white-space: nowrap;
+}
+
+.priority-row-date.urgent {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.priority-row-progress {
+  width: 40px;
+  height: 4px;
+  background: #eee;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.priority-row-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.priority-empty {
+  padding: 1rem;
+  text-align: center;
+  color: #ccc;
+  font-size: 0.8rem;
+  font-style: italic;
+}
