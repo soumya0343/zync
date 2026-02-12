@@ -11,15 +11,15 @@
 }
 
 :root {
-  /* Colors */
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #0f0f0f;
-  --bg-elevated: #141414;
-  --bg-hover: #1a1a1a;
-  --border: #1e1e1e;
-  --text-primary: #f5f5f5;
-  --text-secondary: #888888;
-  --text-muted: #555555;
+  /* Colors - Light Theme */
+  --bg-primary: #f8f9fa; /* Slightly off-white background for the page */
+  --bg-secondary: #ffffff; /* White for sidebar */
+  --bg-elevated: #ffffff; /* White for cards */
+  --bg-hover: #f1f3f5;
+  --border: #e9ecef;
+  --text-primary: #212529;
+  --text-secondary: #868e96;
+  --text-muted: #adb5bd;
   --accent: #6c5ce7;
   --accent-hover: #7c6ef7;
 

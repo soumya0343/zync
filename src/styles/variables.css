@@ -3,8 +3,23 @@
    when you need access to the design tokens outside of :root. */
 
 :root {
+  /* Branding */
+  --brand-primary: #000000;
+  --brand-secondary: #333333;
+
+  /* Status Colors */
+  --status-high-bg: #ffecec;
+  --status-high-text: #ff4d4d;
+  --status-track-bg: #e6f9f0;
+  --status-track-text: #00cc66;
+
+  /* Goals */
+  --goal-track: #e0e0e0;
+  --goal-fill: #000000;
+
   /* Spacing */
   --space-xs: 0.25rem;
+
   --space-sm: 0.5rem;
   --space-md: 1rem;
   --space-lg: 1.5rem;

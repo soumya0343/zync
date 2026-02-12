@@ -1,0 +1,471 @@
+/* ─── Shared Component Styles ────────────────────────────── */
+
+.section-container {
+  margin-bottom: 1.5rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #1a1a1a;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.btn-link:hover {
+  color: #333;
+}
+
+/* ─── Header ─────────────────────────────────────────────── */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+}
+
+.date-display {
+  color: #888;
+  font-size: 0.8rem;
+  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dashboard-header h1 {
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 0.2rem;
+  letter-spacing: -0.02em;
+}
+
+.dashboard-header .subtitle {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.btn-checkin {
+  background: #1a1a1a;
+  color: #fff;
+  border: none;
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.btn-checkin:hover {
+  background: #333;
+}
+
+/* ─── Task Item ──────────────────────────────────────────── */
+.task-item {
+  background: #ffffff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  color: #1a1a1a;
+}
+
+.task-checkbox input[type="checkbox"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  border: 2px solid #d0d0d0;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.task-checkbox input[type="checkbox"]:checked {
+  background: #1a1a1a;
+  border-color: #1a1a1a;
+}
+
+.task-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-title {
+  display: block;
+  font-weight: 500;
+  font-size: 0.9rem;
+  margin-bottom: 0.3rem;
+  color: #1a1a1a;
+}
+
+.task-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.72rem;
+  color: #888;
+}
+
+.task-tag {
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.7rem;
+}
+
+.tag-university {
+  background: #2a2a2a;
+  color: #ffffff;
+}
+
+.tag-health {
+  background: #e6f9f0;
+  color: #00b894;
+}
+
+.task-time {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #999;
+  font-size: 0.72rem;
+}
+
+.task-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.priority-badge {
+  background: #fff0f0;
+  color: #ff4d4d;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.btn-more {
+  background: none;
+  border: none;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.2rem;
+  line-height: 1;
+}
+
+.btn-more:hover {
+  color: #666;
+}
+
+/* ─── Goal Card ──────────────────────────────────────────── */
+.goals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.goal-card {
+  background: #ffffff;
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 1.25rem;
+  color: #1a1a1a;
+}
+
+.goal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.goal-icon-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.goal-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.goal-tag {
+  font-size: 0.6rem;
+  background: #f5f5f5;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  text-transform: uppercase;
+  color: #999;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.goal-days-left {
+  font-size: 0.6rem;
+  color: #ff6b6b;
+  background: #fff0f0;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.goal-content h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+  color: #1a1a1a;
+}
+
+.goal-content p {
+  font-size: 0.8rem;
+  color: #999;
+  margin-bottom: 1.25rem;
+}
+
+.goal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.goal-progress {
+  flex: 1;
+  margin-right: 1rem;
+}
+
+.goal-progress .progress-text {
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  color: #1a1a1a;
+}
+
+.goal-progress .progress-text strong {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.progress-bar-track {
+  height: 4px;
+  background: #eee;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.goal-status {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.goal-status.status-on-track {
+  background: #e6f9f0;
+  color: #00b894;
+}
+
+.goal-status.status-at-risk {
+  background: #fff0f0;
+  color: #ff6b6b;
+}
+
+/* ─── Widgets ────────────────────────────────────────────── */
+.widget-card {
+  background: #ffffff;
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 1.25rem;
+  color: #1a1a1a;
+}
+
+.widget-subtitle {
+  font-size: 0.65rem;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+.widget-action {
+  font-size: 0.8rem;
+  color: #999;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.widget-action:hover {
+  color: #333;
+}
+
+.widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+/* Productivity Chart */
+.productivity-stat h2 {
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 1.25rem;
+  line-height: 1.2;
+}
+
+.stat-suffix {
+  font-size: 0.85rem;
+  color: #999;
+  font-weight: 400;
+}
+
+.chart-placeholder {
+  height: 80px;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  margin-bottom: 0.75rem;
+}
+
+.chart-placeholder .bar {
+  flex: 1;
+  background: #f0f0f0;
+  border-radius: 3px 3px 0 0;
+  min-width: 0;
+}
+
+.chart-placeholder .bar.active {
+  background: #1a1a1a;
+}
+
+.trend-indicator {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.trend-arrow {
+  color: #00b894;
+}
+
+.trend-value {
+  color: #00b894;
+}
+
+.trend-context {
+  color: #999;
+  font-weight: 400;
+}
+
+/* Upcoming Events */
+.events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.event-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.event-date-box {
+  width: 38px;
+  height: 38px;
+  background: #f8f8f8;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #1a1a1a;
+  flex-shrink: 0;
+}
+
+.event-details h4 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0;
+  color: #1a1a1a;
+}
+
+.event-details p {
+  font-size: 0.7rem;
+  color: #999;
+  margin: 0;
+}
+
+/* Quote Widget */
+.quote-widget {
+  background: #f9f9f9;
+  border: 1px solid #eee;
+}
+
+.quote-icon {
+  font-size: 1.1rem;
+  margin-bottom: 0.4rem;
+}
+
+.quote-text {
+  font-style: italic;
+  font-size: 0.85rem;
+  color: #333;
+  margin-bottom: 0.6rem;
+  line-height: 1.5;
+}
+
+.quote-author {
+  font-size: 0.7rem;
+  color: #999;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
