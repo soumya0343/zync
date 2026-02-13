@@ -5,6 +5,7 @@ const AppLayout = () => {
   const location = useLocation();
   const isTasksPage = location.pathname.startsWith("/tasks");
   const isGoalsPage = location.pathname.startsWith("/goals");
+  const isCheckInPage = location.pathname.startsWith("/check-in");
 
   return (
     <div className="app-layout">
@@ -96,13 +97,17 @@ const AppLayout = () => {
             <div className="avatar"></div>
             <div className="user-info">
               <p className="name">
-                {isTasksPage
-                  ? "Sarah Student"
-                  : isGoalsPage
-                    ? "Alex Chen"
-                    : "Alex M."}
+                {isCheckInPage
+                  ? "Alex Student"
+                  : isTasksPage
+                    ? "Sarah Student"
+                    : isGoalsPage
+                      ? "Alex Chen"
+                      : "Alex M."}
               </p>
-              <p className="plan">Free Plan</p>
+              <p className="plan">
+                {isCheckInPage ? "alex@university.edu" : "Free Plan"}
+              </p>
             </div>
           </div>
         </div>
