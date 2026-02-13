@@ -18,7 +18,16 @@ app.use(express.json());
 app.use(cookieParser());
 
 import authRoutes from "./routes/authRoutes";
+import boardRoutes from "./routes/boardRoutes";
+import taskRoutes from "./routes/taskRoutes";
+import goalRoutes from "./routes/goalRoutes";
+import checkInRoutes from "./routes/checkInRoutes";
+
 app.use("/api/auth", authRoutes);
+app.use("/api/boards", boardRoutes);
+app.use("/api/tasks", taskRoutes);
+app.use("/api/goals", goalRoutes);
+app.use("/api/checkins", checkInRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "Server is running" });
