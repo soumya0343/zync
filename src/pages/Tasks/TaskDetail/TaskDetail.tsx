@@ -5,6 +5,7 @@ import {
   getChildren,
   addChild,
   cycleTaskStatus,
+  updateTaskStatus,
   getTopLevelTaskId,
 } from "../taskStore";
 import type { TaskNode } from "../taskStore";
@@ -18,6 +19,9 @@ const STATUS_BADGE: Record<
   done: { bg: "#ecfdf5", color: "#16a34a", label: "DONE" },
   "in-progress": { bg: "#fff4ed", color: "#ea580c", label: "IN PROGRESS" },
   todo: { bg: "#f5f5f5", color: "#666", label: "TO DO" },
+  backlog: { bg: "#f3f4f6", color: "#4b5563", label: "BACKLOG" },
+  planned: { bg: "#fffbeb", color: "#d97706", label: "PLANNED" },
+  blocked: { bg: "#fef2f2", color: "#dc2626", label: "BLOCKED" },
 };
 
 const TaskDetail = () => {
@@ -27,6 +31,17 @@ const TaskDetail = () => {
   const rerender = useCallback(() => forceUpdate((n) => n + 1), []);
 
   const [newSubtask, setNewSubtask] = useState("");
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
+
+  // Close dropdown when clicking outside (using overlay)
+
+  const handleStatusChange = (newStatus: TaskNode["status"]) => {
+    if (taskId) {
+      updateTaskStatus(taskId, newStatus);
+      setIsStatusOpen(false);
+      rerender();
+    }
+  };
 
   const task = taskId ? getTask(taskId) : undefined;
 
@@ -264,18 +279,56 @@ const TaskDetail = () => {
           <div className="td-meta-card">
             <div className="td-meta-row">
               <span className="td-meta-label">STATUS</span>
-              <span className="td-meta-value">
-                <span
-                  className="td-meta-dot"
-                  style={{ background: task.statusColor || "#6b7280" }}
-                ></span>
-                {task.status === "done"
-                  ? "Done"
-                  : task.status === "in-progress"
-                    ? "In Progress"
-                    : "To Do"}
-                <span className="td-meta-chevron">›</span>
-              </span>
+              <div className="td-status-dropdown-container">
+                <div
+                  className="td-meta-value td-status-trigger"
+                  onClick={() => setIsStatusOpen(!isStatusOpen)}
+                >
+                  <span
+                    className="td-meta-dot"
+                    style={{ background: task.statusColor || "#6b7280" }}
+                  ></span>
+                  {task.status === "done"
+                    ? "Done"
+                    : task.status === "in-progress"
+                      ? "In Progress"
+                      : task.status === "blocked"
+                        ? "Blocked"
+                        : "To Do"}
+                  <span className="td-meta-chevron">›</span>
+                </div>
+
+                {isStatusOpen && (
+                  <div className="td-status-dropdown-menu">
+                    {[
+                      { value: "backlog", label: "Backlog", color: "#6b7280" },
+                      { value: "todo", label: "To Do", color: "#6b7280" },
+                      { value: "planned", label: "Planned", color: "#f59e0b" },
+                      {
+                        value: "in-progress",
+                        label: "In Progress",
+                        color: "#8b5cf6",
+                      },
+                      { value: "blocked", label: "Blocked", color: "#ef4444" },
+                      { value: "done", label: "Done", color: "#16a34a" },
+                    ].map((opt) => (
+                      <div
+                        key={opt.value}
+                        className="td-status-option"
+                        onClick={() =>
+                          handleStatusChange(opt.value as TaskNode["status"])
+                        }
+                      >
+                        <span
+                          className="td-status-option-dot"
+                          style={{ background: opt.color }}
+                        ></span>
+                        {opt.label}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             {task.assignee && (
               <div className="td-meta-row">

@@ -5,7 +5,7 @@
 export interface TaskNode {
   id: string;
   title: string;
-  status: "done" | "in-progress" | "todo";
+  status: "backlog" | "planned" | "in-progress" | "blocked" | "done" | "todo"; // unified
   description?: string;
   bullets?: string[];
   breadcrumb: string[]; // e.g. ['PROJECTS', 'SEMESTER 1']
@@ -340,7 +340,7 @@ function seed() {
 
 // ── Store helpers ─────────────────────────────────────────
 
-function add(node: TaskNode) {
+export function add(node: TaskNode) {
   taskStore[node.id] = node;
 }
 
@@ -375,18 +375,70 @@ export function addChild(parentId: string, title: string): TaskNode | null {
   return child;
 }
 
+import { KANBAN_TASKS, KANBAN_COLUMNS } from "./mockData";
+
+export function updateTaskStatus(id: string, status: TaskNode["status"]) {
+  const task = taskStore[id];
+  if (!task) return;
+
+  const oldStatus = task.status;
+  task.status = status;
+
+  const colors: Record<string, string> = {
+    backlog: "#6b7280",
+    todo: "#6b7280",
+    planned: "#f59e0b",
+    "in-progress": "#8b5cf6",
+    blocked: "#ef4444",
+    done: "#16a34a",
+  };
+
+  if (colors[status]) {
+    task.statusColor = colors[status];
+  }
+
+  // Sync with Kanban Board Data
+  const kanbanTask = KANBAN_TASKS.find((t) => t.id === id);
+  if (kanbanTask) {
+    // Map TaskNode status to KanbanStatus if needed (they are now unified types mostly)
+    kanbanTask.kanbanStatus = status as any;
+
+    // Move between columns
+    // 1. Remove from old column
+    const oldColId = oldStatus === "todo" ? "backlog" : oldStatus; // map todo -> backlog for kanban
+    const oldCol =
+      KANBAN_COLUMNS.find((c) => c.id === oldColId) ||
+      KANBAN_COLUMNS.find((c) => c.tasks.some((t) => t.id === id));
+
+    if (oldCol) {
+      oldCol.tasks = oldCol.tasks.filter((t) => t.id !== id);
+      oldCol.count = oldCol.tasks.length;
+    }
+
+    // 2. Add to new column
+    const newColId = status === "todo" ? "backlog" : status;
+    const newCol = KANBAN_COLUMNS.find((c) => c.id === newColId);
+    if (newCol) {
+      // Check if already there to avoid dupes (though we filtered above)
+      if (!newCol.tasks.find((t) => t.id === id)) {
+        newCol.tasks = [...newCol.tasks, kanbanTask];
+        newCol.count = newCol.tasks.length;
+      }
+    }
+  }
+}
+
 export function cycleTaskStatus(id: string): TaskNode | null {
   const task = taskStore[id];
   if (!task) return null;
+  // Cycle main statuses
   const order: TaskNode["status"][] = ["todo", "in-progress", "done"];
-  const colors: Record<string, string> = {
-    todo: "#6b7280",
-    "in-progress": "#f59e0b",
-    done: "#16a34a",
-  };
-  const nextIdx = (order.indexOf(task.status) + 1) % order.length;
-  task.status = order[nextIdx];
-  task.statusColor = colors[task.status];
+  // If current status is not in cycle (e.g. blocked), reset to todo
+  let nextIdx = order.indexOf(task.status);
+  if (nextIdx === -1) nextIdx = -1; // defaults to 0 next
+
+  const nextStatus = order[(nextIdx + 1) % order.length];
+  updateTaskStatus(id, nextStatus);
   return task;
 }
 

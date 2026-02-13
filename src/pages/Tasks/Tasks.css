@@ -1,6 +1,8 @@
 .tasks-page {
-  padding: 1.5rem 2rem;
+  padding: 2rem;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden; /* Manage internal scrolling via kanban board */
 }

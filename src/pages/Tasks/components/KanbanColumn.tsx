@@ -1,14 +1,16 @@
+import { useState } from "react";
 import type { KanbanTask } from "../../../types";
 import KanbanCard from "./KanbanCard";
 import "./TasksComponents.css";
 
 interface KanbanColumnProps {
+  id: string; // added to identify column
   title: string;
   count: number;
   color: string;
   tasks: KanbanTask[];
-  showAddButton?: boolean;
   onCardClick?: (taskId: string) => void;
+  onAddTask?: (title: string) => void;
 }
 
 const KanbanColumn = ({
@@ -16,9 +18,30 @@ const KanbanColumn = ({
   count,
   color,
   tasks,
-  showAddButton,
   onCardClick,
+  onAddTask,
 }: KanbanColumnProps) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+
+  const handleAddSubmit = () => {
+    if (!newTitle.trim()) {
+      setIsAdding(false);
+      return;
+    }
+    onAddTask?.(newTitle);
+    setNewTitle("");
+    setIsAdding(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleAddSubmit();
+    if (e.key === "Escape") {
+      setIsAdding(false);
+      setNewTitle("");
+    }
+  };
+
   return (
     <div className="kanban-column">
       <div className="kanban-column-header">
@@ -35,8 +58,30 @@ const KanbanColumn = ({
             onClick={() => onCardClick?.(task.id)}
           />
         ))}
-        {showAddButton && (
-          <button className="kanban-add-task-btn">+ Add Task</button>
+
+        {isAdding ? (
+          <div className="kanban-add-input-wrapper">
+            <input
+              autoFocus
+              className="kanban-add-input"
+              placeholder="Task title..."
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={() => {
+                // Optional: submit on blur or cancel? Let's submit if non-empty
+                if (newTitle.trim()) handleAddSubmit();
+                else setIsAdding(false);
+              }}
+            />
+          </div>
+        ) : (
+          <button
+            className="kanban-add-task-btn"
+            onClick={() => setIsAdding(true)}
+          >
+            + Add Task
+          </button>
         )}
       </div>
     </div>
