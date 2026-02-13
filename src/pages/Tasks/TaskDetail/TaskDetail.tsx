@@ -1,7 +1,14 @@
 import { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getTask, getChildren, addChild, cycleTaskStatus } from "../taskStore";
+import {
+  getTask,
+  getChildren,
+  addChild,
+  cycleTaskStatus,
+  getTopLevelTaskId,
+} from "../taskStore";
 import type { TaskNode } from "../taskStore";
+import { getGoal, CATEGORY_CONFIG } from "../../../pages/Goals/goalData";
 import "./TaskDetail.css";
 
 const STATUS_BADGE: Record<
@@ -311,6 +318,34 @@ const TaskDetail = () => {
                 </span>
               </div>
             )}
+            {(() => {
+              const rootId = getTopLevelTaskId(task.id);
+              const rootTask = getTask(rootId);
+              const goalId = rootTask?.goalId || task.goalId;
+              if (!goalId) return null;
+              const goal = getGoal(goalId);
+              if (!goal) return null;
+              const cat =
+                CATEGORY_CONFIG[goal.category as keyof typeof CATEGORY_CONFIG];
+              return (
+                <div className="td-meta-row">
+                  <span className="td-meta-label">GOAL</span>
+                  <span
+                    className="td-meta-value td-meta-link"
+                    onClick={() => navigate("/goals")}
+                  >
+                    <span
+                      className="td-goal-badge"
+                      style={{ background: cat?.bg, color: cat?.color }}
+                    >
+                      {cat?.label}
+                    </span>
+                    {goal.title}
+                    <span className="td-meta-chevron">↗</span>
+                  </span>
+                </div>
+              );
+            })()}
             {task.created && (
               <div className="td-meta-row">
                 <span className="td-meta-label">CREATED</span>

@@ -1,5 +1,6 @@
 // Global task store — every task/subtask lives here, keyed by ID.
 // Each task knows its parent and its children. This enables infinite nesting.
+// Top-level tasks link to a parent goal via goalId.
 
 export interface TaskNode {
   id: string;
@@ -18,6 +19,7 @@ export interface TaskNode {
   flagColor?: string;
   parentId?: string | null;
   childIds: string[];
+  goalId?: string; // which goal this top-level task belongs to
 }
 
 // Mutable store (simulating a database)
@@ -43,6 +45,7 @@ function seed() {
     statusColor: "#6b7280",
     parentId: null,
     childIds: [],
+    goalId: "g-2",
   });
 
   add({
@@ -59,6 +62,7 @@ function seed() {
     statusColor: "#6b7280",
     parentId: null,
     childIds: [],
+    goalId: "g-3",
   });
 
   add({
@@ -81,6 +85,7 @@ function seed() {
     statusColor: "#f59e0b",
     parentId: null,
     childIds: ["kt-3-1", "kt-3-2"],
+    goalId: "g-1",
   });
 
   add({
@@ -137,6 +142,7 @@ function seed() {
     statusColor: "#f59e0b",
     parentId: null,
     childIds: ["st-1", "st-2", "st-3"],
+    goalId: "g-2",
   });
 
   add({
@@ -273,6 +279,7 @@ function seed() {
     statusColor: "#6b7280",
     parentId: null,
     childIds: [],
+    goalId: "g-2",
   });
 
   // ── kt-6 through kt-8 ──
@@ -291,6 +298,7 @@ function seed() {
     statusColor: "#ef4444",
     parentId: null,
     childIds: [],
+    goalId: "g-2",
   });
 
   add({
@@ -308,6 +316,7 @@ function seed() {
     statusColor: "#f59e0b",
     parentId: null,
     childIds: [],
+    goalId: "g-1",
   });
 
   add({
@@ -325,6 +334,7 @@ function seed() {
     statusColor: "#6b7280",
     parentId: null,
     childIds: [],
+    goalId: "g-3",
   });
 }
 
@@ -378,6 +388,15 @@ export function cycleTaskStatus(id: string): TaskNode | null {
   task.status = order[nextIdx];
   task.statusColor = colors[task.status];
   return task;
+}
+
+// Walk up the parent chain to find the root (top-level) task
+export function getTopLevelTaskId(taskId: string): string {
+  let current = taskStore[taskId];
+  while (current?.parentId) {
+    current = taskStore[current.parentId];
+  }
+  return current?.id || taskId;
 }
 
 // Initialize

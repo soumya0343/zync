@@ -4,6 +4,7 @@ import "./AppLayout.css";
 const AppLayout = () => {
   const location = useLocation();
   const isTasksPage = location.pathname.startsWith("/tasks");
+  const isGoalsPage = location.pathname.startsWith("/goals");
 
   return (
     <div className="app-layout">
@@ -15,7 +16,27 @@ const AppLayout = () => {
 
         {isTasksPage && (
           <div className="sidebar-new-task">
-            <button className="btn-new-task">+ New Task</button>
+            <button
+              className="btn-new-task"
+              onClick={() =>
+                window.dispatchEvent(new CustomEvent("open-new-task"))
+              }
+            >
+              + New Task
+            </button>
+          </div>
+        )}
+
+        {isGoalsPage && (
+          <div className="sidebar-new-task">
+            <button
+              className="btn-new-task"
+              onClick={() =>
+                window.dispatchEvent(new CustomEvent("open-new-goal"))
+              }
+            >
+              + New Goal
+            </button>
           </div>
         )}
 
@@ -75,7 +96,11 @@ const AppLayout = () => {
             <div className="avatar"></div>
             <div className="user-info">
               <p className="name">
-                {isTasksPage ? "Sarah Student" : "Alex M."}
+                {isTasksPage
+                  ? "Sarah Student"
+                  : isGoalsPage
+                    ? "Alex Chen"
+                    : "Alex M."}
               </p>
               <p className="plan">Free Plan</p>
             </div>

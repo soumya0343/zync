@@ -121,6 +121,24 @@
   color: #ccc;
 }
 
+.quick-add-btn {
+  background: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.quick-add-btn:hover {
+  background: #333;
+}
+
 /* ─── Kanban Board ───────────────────────────────────────── */
 
 .kanban-board {
