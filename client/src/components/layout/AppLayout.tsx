@@ -1,11 +1,13 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { LogOut } from "lucide-react";
 import "./AppLayout.css";
 
 const AppLayout = () => {
+  const { user, logout } = useAuth();
   const location = useLocation();
   const isTasksPage = location.pathname.startsWith("/tasks");
   const isGoalsPage = location.pathname.startsWith("/goals");
-  const isCheckInPage = location.pathname.startsWith("/check-in");
 
   return (
     <div className="app-layout">
@@ -96,20 +98,13 @@ const AppLayout = () => {
           <div className="user-profile">
             <div className="avatar"></div>
             <div className="user-info">
-              <p className="name">
-                {isCheckInPage
-                  ? "Alex Student"
-                  : isTasksPage
-                    ? "Sarah Student"
-                    : isGoalsPage
-                      ? "Alex Chen"
-                      : "Alex M."}
-              </p>
-              <p className="plan">
-                {isCheckInPage ? "alex@university.edu" : "Free Plan"}
-              </p>
+              <p className="name">{user?.name || "User"}</p>
+              <p className="plan">{user?.email || "Free Plan"}</p>
             </div>
           </div>
+          <button onClick={logout} className="btn-logout" aria-label="Log out">
+            <LogOut size={18} />
+          </button>
         </div>
       </aside>
 
