@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import "./DashboardComponents.css";
 
 interface DashboardHeaderProps {
@@ -11,6 +12,8 @@ const DashboardHeader = ({
   date,
   priorityTaskCount,
 }: DashboardHeaderProps) => {
+  const navigate = useNavigate();
+
   return (
     <div className="dashboard-header">
       <div className="header-content">
@@ -23,7 +26,9 @@ const DashboardHeader = ({
         </p>
       </div>
       <div className="header-actions">
-        <button className="btn-checkin">✏️ Daily Check-in</button>
+        <button className="btn-checkin" onClick={() => navigate("/check-in")}>
+          📝 Daily Check-in
+        </button>
       </div>
     </div>
   );
