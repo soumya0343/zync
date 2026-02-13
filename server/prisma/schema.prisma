@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  boards    Board[]
+  goals     Goal[]
+  checkIns  DailyCheckIn[]
+  createdAt DateTime @default(now())
+}
+
+model DailyCheckIn {
+  id        String   @id @default(uuid())
+  date      DateTime @default(now())
+  content   String   @db.Text
+  mood      String?
+  tags      String[]
+  isPublic  Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  updatedAt DateTime @updatedAt
+}
+
+model Board {
+  id        String   @id @default(uuid())
+  title     String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  columns   Column[]
+  createdAt DateTime @default(now())
+}
+
+model Column {
+  id        String   @id @default(uuid())
+  title     String
+  order     Int
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id])
+  tasks     Task[]
+}
+
+model Goal {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  category    String
+  progress    Int       @default(0)
+  dueDate     DateTime?
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  tasks       Task[]
+  createdAt   DateTime  @default(now())
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?  @db.Text
+  priority    String   @default("medium")
+  order       Int
+  columnId    String
+  column      Column   @relation(fields: [columnId], references: [id])
+  goalId      String?
+  goal        Goal?    @relation(fields: [goalId], references: [id])
+  createdAt   DateTime @default(now())
+  dueDate     DateTime?
+}
