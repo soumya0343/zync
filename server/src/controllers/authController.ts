@@ -75,6 +75,11 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
+export const logout = (req: Request, res: Response) => {
+  res.clearCookie("token");
+  res.json({ message: "Logged out successfully" });
+};
+
 export const getMe = async (
   req: Request & { user?: { userId: string } },
   res: Response,

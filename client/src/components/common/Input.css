@@ -1,0 +1,116 @@
+.input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+  width: 100%;
+}
+
+.input-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-field {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  outline: none;
+}
+
+.input-field:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05); /* Subtle focus ring */
+}
+
+.input-field::placeholder {
+  color: var(--text-muted);
+}
+
+.input-field:disabled {
+  background-color: var(--bg-primary);
+  cursor: not-allowed;
+}
+
+.input-error {
+  border-color: var(--status-high-text);
+}
+
+.input-error:focus {
+  box-shadow: 0 0 0 3px var(--status-high-bg);
+}
+
+.input-error-message {
+  font-size: 0.75rem;
+  color: var(--status-high-text);
+  margin-top: 2px;
+}
+
+.input-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+  display: flex;
+  pointer-events: none;
+}
+
+.input-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.input-label-right {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.input-suffix {
+  position: absolute;
+  right: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.clickable {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.clickable:hover {
+  color: var(--text-primary);
+}
+
+.input-with-suffix {
+  padding-right: 2.5rem;
+}
+
+/* Auth pages: uppercase, bold labels */
+.input-wrapper.auth-input .input-label {
+  text-transform: uppercase;
+  font-weight: 600;
+  font-size: 0.6875rem;
+  letter-spacing: 0.05em;
+  color: #374151;
+}
+
+.input-wrapper.auth-input .input-label-right a {
+  color: #6b7280;
+  font-weight: 500;
+}
