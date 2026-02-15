@@ -1,57 +1,79 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import {
+  db,
+  timestampToDate,
+  dateToTimestamp,
+} from "../lib/firebase";
+import type { Timestamp, DocumentSnapshot } from "firebase-admin/firestore";
 
-const prisma = new PrismaClient();
+const checkInsCol = () => db.collection("dailyCheckIns");
 
-// Get all check-ins for the user
+function docToCheckIn(doc: DocumentSnapshot): any {
+  const d = doc.data();
+  if (!d) return null;
+  return {
+    id: doc.id,
+    date: timestampToDate(d.date as Timestamp)?.toISOString() ?? null,
+    content: d.content,
+    mood: d.mood ?? null,
+    focusedHours: d.focusedHours ?? null,
+    reflections: d.reflections ?? null,
+    tags: d.tags ?? [],
+    isPublic: d.isPublic ?? false,
+    userId: d.userId,
+    updatedAt: timestampToDate(d.updatedAt as Timestamp)?.toISOString() ?? null,
+  };
+}
+
 export const getCheckIns = async (
   req: Request & { user?: { userId: string } },
   res: Response,
 ) => {
   try {
     const userId = req.user?.userId;
-    const checkIns = await prisma.dailyCheckIn.findMany({
-      where: { userId },
-      orderBy: { date: "desc" },
+    const snap = await checkInsCol().where("userId", "==", userId).get();
+    const sorted = [...snap.docs].sort((a, b) => {
+      const da = a.data().date?.toMillis?.() ?? 0;
+      const db_ = b.data().date?.toMillis?.() ?? 0;
+      return db_ - da;
     });
-    res.json(checkIns);
-  } catch (error) {
+    res.json(sorted.map((d) => docToCheckIn(d)));
+  } catch (error: any) {
+    if (error?.code === 5 || error?.message?.includes("NOT_FOUND")) {
+      return res.json([]);
+    }
     res.status(500).json({ message: "Error fetching check-ins", error });
   }
 };
 
-// Create a new check-in
 export const createCheckIn = async (
   req: Request & { user?: { userId: string } },
   res: Response,
 ) => {
   try {
-    const { content, mood, tags, isPublic, date, focusedHours, reflections } =
-      req.body;
+    const { content, mood, tags, isPublic, date, focusedHours, reflections } = req.body;
     const userId = req.user?.userId;
-
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-    const checkIn = await prisma.dailyCheckIn.create({
-      data: {
-        content,
-        mood,
-        focusedHours:
-          focusedHours != null ? Number(focusedHours) : undefined,
-        reflections: reflections ?? undefined,
-        tags: tags || [],
-        isPublic: isPublic || false,
-        date: date ? new Date(date) : new Date(),
-        userId,
-      },
+    const now = new Date();
+    const ref = await checkInsCol().add({
+      content: content ?? "",
+      mood: mood ?? null,
+      focusedHours: focusedHours != null ? Number(focusedHours) : null,
+      reflections: reflections ?? null,
+      tags: Array.isArray(tags) ? tags : [],
+      isPublic: isPublic ?? false,
+      date: date ? dateToTimestamp(date) : dateToTimestamp(now),
+      userId,
+      updatedAt: dateToTimestamp(now),
     });
-    res.status(201).json(checkIn);
+    const snap = await ref.get();
+    res.status(201).json(docToCheckIn(snap));
   } catch (error) {
     res.status(500).json({ message: "Error creating check-in", error });
   }
 };
 
-// Get a single check-in
 export const getCheckIn = async (
   req: Request & { user?: { userId: string } },
   res: Response,
@@ -59,68 +81,48 @@ export const getCheckIn = async (
   try {
     const { id } = req.params;
     const userId = req.user?.userId;
+    if (typeof id !== "string") return res.status(400).json({ message: "Invalid ID" });
 
-    if (typeof id !== "string") {
-      return res.status(400).json({ message: "Invalid ID" });
-    }
-
-    const checkIn = await prisma.dailyCheckIn.findFirst({
-      where: { id, userId },
-    });
-
-    if (!checkIn)
+    const doc = await checkInsCol().doc(id).get();
+    if (!doc.exists || doc.data()?.userId !== userId)
       return res.status(404).json({ message: "Check-in not found" });
-    res.json(checkIn);
+    res.json(docToCheckIn(doc));
   } catch (error) {
     res.status(500).json({ message: "Error fetching check-in", error });
   }
 };
 
-// Update a check-in
 export const updateCheckIn = async (
   req: Request & { user?: { userId: string } },
   res: Response,
 ) => {
   try {
     const { id } = req.params;
-    const { content, mood, tags, isPublic, date, focusedHours, reflections } =
-      req.body;
+    const { content, mood, tags, isPublic, date, focusedHours, reflections } = req.body;
     const userId = req.user?.userId;
+    if (typeof id !== "string") return res.status(400).json({ message: "Invalid ID" });
 
-    if (typeof id !== "string") {
-      return res.status(400).json({ message: "Invalid ID" });
-    }
-
-    const existingCheckIn = await prisma.dailyCheckIn.findFirst({
-      where: { id, userId },
-    });
-
-    if (!existingCheckIn) {
+    const doc = await checkInsCol().doc(id).get();
+    if (!doc.exists || doc.data()?.userId !== userId)
       return res.status(404).json({ message: "Check-in not found" });
-    }
 
-    const checkIn = await prisma.dailyCheckIn.update({
-      where: { id },
-      data: {
-        ...(content !== undefined && { content }),
-        ...(mood !== undefined && { mood }),
-        ...(tags !== undefined && { tags }),
-        ...(isPublic !== undefined && { isPublic }),
-        ...(date !== undefined && { date: new Date(date) }),
-        ...(focusedHours !== undefined && {
-          focusedHours: Number(focusedHours),
-        }),
-        ...(reflections !== undefined && { reflections }),
-      },
-    });
+    const update: Record<string, unknown> = { updatedAt: dateToTimestamp(new Date()) };
+    if (content !== undefined) update.content = content;
+    if (mood !== undefined) update.mood = mood;
+    if (tags !== undefined) update.tags = tags;
+    if (isPublic !== undefined) update.isPublic = isPublic;
+    if (date !== undefined) update.date = dateToTimestamp(date);
+    if (focusedHours !== undefined) update.focusedHours = Number(focusedHours);
+    if (reflections !== undefined) update.reflections = reflections;
 
-    res.json(checkIn);
+    await checkInsCol().doc(id).update(update);
+    const snap = await checkInsCol().doc(id).get();
+    res.json(docToCheckIn(snap));
   } catch (error) {
     res.status(500).json({ message: "Error updating check-in", error });
   }
 };
 
-// Delete a check-in
 export const deleteCheckIn = async (
   req: Request & { user?: { userId: string } },
   res: Response,
@@ -128,20 +130,13 @@ export const deleteCheckIn = async (
   try {
     const { id } = req.params;
     const userId = req.user?.userId;
+    if (typeof id !== "string") return res.status(400).json({ message: "Invalid ID" });
 
-    if (typeof id !== "string") {
-      return res.status(400).json({ message: "Invalid ID" });
-    }
-
-    const existingCheckIn = await prisma.dailyCheckIn.findFirst({
-      where: { id, userId },
-    });
-
-    if (!existingCheckIn) {
+    const doc = await checkInsCol().doc(id).get();
+    if (!doc.exists || doc.data()?.userId !== userId)
       return res.status(404).json({ message: "Check-in not found" });
-    }
 
-    await prisma.dailyCheckIn.delete({ where: { id } });
+    await checkInsCol().doc(id).delete();
     res.json({ message: "Check-in deleted" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting check-in", error });

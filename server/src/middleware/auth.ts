@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import { auth } from "../lib/firebase";
 
 interface AuthRequest extends Request {
   user?: {
@@ -7,25 +7,24 @@ interface AuthRequest extends Request {
   };
 }
 
-export const authenticateToken = (
+export const authenticateToken = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction,
 ) => {
   const token =
-    req.cookies.token || req.headers["authorization"]?.split(" ")[1];
+    req.headers["authorization"]?.startsWith("Bearer ") &&
+    req.headers["authorization"].slice(7);
 
   if (!token) {
     return res.status(401).json({ message: "Authentication required" });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as {
-      userId: string;
-    };
-    req.user = decoded;
+    const decoded = await auth.verifyIdToken(token);
+    req.user = { userId: decoded.uid };
     next();
-  } catch (error) {
+  } catch {
     return res.status(403).json({ message: "Invalid token" });
   }
 };

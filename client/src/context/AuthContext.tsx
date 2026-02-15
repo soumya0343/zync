@@ -1,98 +1,116 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  updateProfile,
+  GoogleAuthProvider,
+  OAuthProvider,
+  type User,
+} from "firebase/auth";
+import { auth } from "../lib/firebase";
 
-interface User {
+interface UserInfo {
   id: string;
   email: string;
   name: string | null;
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: UserInfo | null;
   isLoading: boolean;
-  login: (credentials: any) => Promise<void>;
-  register: (data: any) => Promise<void>;
+  login: (credentials: { email: string; password: string }) => Promise<void>;
+  register: (data: {
+    email: string;
+    password: string;
+    name?: string | null;
+  }) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  loginWithApple: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const apiBase = import.meta.env.VITE_API_URL || "";
-
-const authFetch = (path: string, options: RequestInit = {}) => {
-  const url = `${apiBase}/api/auth${path}`;
-  return fetch(url, {
-    ...options,
-    credentials: apiBase ? "include" : "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-};
+function firebaseUserToUser(u: User): UserInfo {
+  return {
+    id: u.uid,
+    email: u.email ?? "",
+    name: u.displayName ?? null,
+  };
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check if user is logged in
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await authFetch("/me");
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user);
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    checkAuth();
+    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser ? firebaseUserToUser(firebaseUser) : null);
+      setIsLoading(false);
+    });
+    return () => unsub();
   }, []);
 
-  const login = async (credentials: any) => {
-    const res = await authFetch("/login", {
-      method: "POST",
-      body: JSON.stringify(credentials),
-    });
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.message || "Login failed");
-    }
-    const data = await res.json();
-    setUser(data.user);
+  const login = async (credentials: {
+    email: string;
+    password: string;
+  }) => {
+    const { email, password } = credentials;
+    const { user: u } = await signInWithEmailAndPassword(auth, email, password);
+    setUser(firebaseUserToUser(u));
   };
 
-  const register = async (userData: any) => {
-    const res = await authFetch("/register", {
-      method: "POST",
-      body: JSON.stringify(userData),
-    });
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.message || "Registration failed");
+  const register = async (userData: {
+    email: string;
+    password: string;
+    name?: string | null;
+  }) => {
+    const { email, password, name } = userData;
+    const { user: u } = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password,
+    );
+    if (name?.trim()) {
+      await updateProfile(u, { displayName: name.trim() });
     }
-    const data = await res.json();
-    setUser(data.user);
+    setUser(firebaseUserToUser(u));
+  };
+
+  const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    const { user: u } = await signInWithPopup(auth, provider);
+    setUser(firebaseUserToUser(u));
+  };
+
+  const loginWithApple = async () => {
+    const provider = new OAuthProvider("apple.com");
+    const { user: u } = await signInWithPopup(auth, provider);
+    setUser(firebaseUserToUser(u));
   };
 
   const logout = async () => {
-    try {
-      await authFetch("/logout", { method: "POST" });
-    } catch (e) {
-      console.error("Logout error", e);
-    }
+    await firebaseSignOut(auth);
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        login,
+        register,
+        loginWithGoogle,
+        loginWithApple,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

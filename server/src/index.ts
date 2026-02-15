@@ -5,8 +5,19 @@ import cookieParser from "cookie-parser";
 
 dotenv.config();
 
+// Initialize Firebase (fails fast if credentials missing)
+import "./lib/firebase";
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    console.log(`[SERVER] ${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`);
+  });
+  next();
+});
 
 app.use(
   cors({
@@ -36,5 +47,5 @@ app.get("/api/health", (req, res) => {
 });
 
 app.listen(Number(PORT), "0.0.0.0", () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`[SERVER] Server running on http://localhost:${PORT}`);
 });

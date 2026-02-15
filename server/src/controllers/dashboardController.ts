@@ -1,7 +1,14 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { db, timestampToDate } from "../lib/firebase";
+import type { Timestamp, QueryDocumentSnapshot } from "firebase-admin/firestore";
 
-const prisma = new PrismaClient();
+const boardsCol = () => db.collection("boards");
+const columnsCol = () => db.collection("columns");
+const tasksCol = () => db.collection("tasks");
+const goalsCol = () => db.collection("goals");
+
+const isDoneColumn = (title: string) =>
+  title.toLowerCase().includes("done") || title.toLowerCase().includes("complete");
 
 export const getDashboardData = async (
   req: Request & { user?: { userId: string } },
@@ -9,7 +16,6 @@ export const getDashboardData = async (
 ) => {
   try {
     const userId = req.user?.userId;
-
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
     const today = new Date();
@@ -19,166 +25,179 @@ export const getDashboardData = async (
     const nextWeek = new Date(today);
     nextWeek.setDate(nextWeek.getDate() + 7);
 
-    // 1. User Info (already have from auth, but let's be explicit if needed, or just use name from token logic if sufficient.
-    // actually, we might want the name if not stored in token)
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { name: true },
-    });
+    const auth = (await import("../lib/firebase")).auth;
+    const firebaseUser = await auth.getUser(userId).catch(() => null);
+    const userName = firebaseUser?.displayName ?? "User";
 
-    // 2. Today's Focus: Tasks due today or older but not done
-    // Actually "Today's Focus" usually means due today.
-    // Let's get tasks due today.
-    const todaysTasks = await prisma.task.findMany({
-      where: {
-        column: { board: { userId } },
-        dueDate: {
-          gte: today, // Start of today
-          lt: tomorrow, // Start of tomorrow
-        },
-        // internal/active only?
-        // Let's assume we show all, even if done, so user sees progress.
-        // Or maybe only not done? The mock showed "todo".
-        // Let's filter out 'Done' columns if possible, but difficult by name.
-        // Let's just return them and frontend can filter or show status.
-      },
-      include: {
-        column: true,
-      },
-      orderBy: { priority: "asc" }, // urgent(0) first
-    });
-
-    // 3. Priority Task Count
-    // "High" or "Urgent" tasks that are NOT in a "Done" column
-    // We need to find "Done" columns first to exclude them, or just use string matching
-    const tasks = await prisma.task.findMany({
-      where: {
-        column: { board: { userId } },
-      },
-      include: { column: true },
-    });
-
-    const isDoneColumn = (title: string) =>
-      title.toLowerCase().includes("done") ||
-      title.toLowerCase().includes("complete");
-
-    const priorityTaskCount = tasks.filter(
-      (t) =>
-        !isDoneColumn(t.column.title) &&
-        t.dueDate &&
-        new Date(t.dueDate) >= today && // Start of today
-        new Date(t.dueDate) < tomorrow, // End of today
-    ).length;
-
-    // 4. Active Goals (include tasks with column so frontend can compute progress from completed tasks)
-    const activeGoals = await prisma.goal.findMany({
-      where: {
-        userId,
-        progress: { lt: 100 },
-      },
-      take: 3,
-      orderBy: { dueDate: "asc" },
-      include: {
-        tasks: {
-          include: { column: true },
-          orderBy: { order: "asc" },
-        },
-      },
-    });
-
-    // 5. Productivity (Completed Tasks)
-    const completedTasks = tasks.filter((t) => isDoneColumn(t.column.title));
-    const completedCount = completedTasks.length;
-
-    // 6. Weekly Productivity
-    // NOTE: Task model doesn't have updatedAt yet, using createdAt as proxy for activity
-    const weeklyData = Array(7).fill(0);
-    const now = new Date();
-
-    // Iterate last 7 days.
-    for (let i = 0; i < 7; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i)); // 6 days ago to today
-      const startOfDay = new Date(d.setHours(0, 0, 0, 0));
-      const endOfDay = new Date(d.setHours(23, 59, 59, 999));
-
-      const count = completedTasks.filter((t) => {
-        const u = new Date(t.createdAt);
-        return u >= startOfDay && u <= endOfDay;
-      }).length;
-
-      weeklyData[i] = count;
+    const boardSnap = await boardsCol().where("userId", "==", userId).get();
+    const boardIds = boardSnap.docs.map((d) => d.id);
+    if (boardIds.length === 0) {
+      return res.json({
+        userName,
+        date: new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }),
+        priorityTaskCount: 0,
+        todaysTasks: [],
+        activeGoals: [],
+        productivity: { completedCount: 0, weeklyData: [0, 0, 0, 0, 0, 0, 0], trend: 0 },
+        events: [],
+      });
     }
 
-    // 7. Upcoming Events
-    const upcomingTasks = await prisma.task.findMany({
-      where: {
-        column: { board: { userId } },
-        dueDate: {
-          gt: tomorrow,
-          lte: nextWeek,
-        },
-      },
-      include: { column: true },
+    const columnIds: string[] = [];
+    for (let i = 0; i < boardIds.length; i += 10) {
+      const chunk = boardIds.slice(i, i + 10);
+      const snap = await columnsCol().where("boardId", "in", chunk).get();
+      snap.docs.forEach((d) => columnIds.push(d.id));
+    }
+    const columnsSnap = await Promise.all(
+      columnIds.map((id) => columnsCol().doc(id).get()),
+    );
+    const columnById: Record<string, any> = {};
+    columnsSnap.forEach((d) => {
+      if (d.exists) columnById[d.id] = d.data();
+    });
+    if (columnIds.length === 0) {
+      return res.json({
+        userName,
+        date: new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }),
+        priorityTaskCount: 0,
+        todaysTasks: [],
+        activeGoals: [],
+        productivity: { completedCount: 0, weeklyData: [0, 0, 0, 0, 0, 0, 0], trend: 0 },
+        events: [],
+      });
+    }
+
+    const allTaskDocs: QueryDocumentSnapshot[] = [];
+    for (let i = 0; i < columnIds.length; i += 10) {
+      const chunk = columnIds.slice(i, i + 10);
+      const snap = await tasksCol().where("columnId", "in", chunk).get();
+      snap.docs.forEach((d) => allTaskDocs.push(d));
+    }
+    const tasksSnap = { docs: allTaskDocs };
+    const tasks = tasksSnap.docs.map((d) => {
+      const t = d.data();
+      return {
+        id: d.id,
+        ...t,
+        column: { id: t.columnId, title: columnById[t.columnId]?.title },
+        createdAt: timestampToDate(t.createdAt as Timestamp),
+        dueDate: t.dueDate ? timestampToDate(t.dueDate as Timestamp) : null,
+      };
     });
 
-    const upcomingGoals = await prisma.goal.findMany({
-      where: {
-        userId,
-        dueDate: {
-          gte: today,
-          lte: nextWeek,
-        },
-      },
+    const todaysTasks = tasks.filter((t) => {
+      const d = t.dueDate;
+      if (!d) return false;
+      const dt = d instanceof Date ? d : new Date(d);
+      return dt >= today && dt < tomorrow;
     });
 
-    const events = [
-      ...upcomingTasks.map((t) => ({
-        id: t.id,
-        title: t.title,
-        time: "Task",
-        type: "Task",
-        date: t.dueDate!, // Guaranteed by query
-        original: t,
-      })),
-      ...upcomingGoals.map((g) => ({
+    const priorityTaskCount = tasks.filter((t) => {
+      const colTitle = (t.column as any)?.title ?? "";
+      const d = t.dueDate;
+      if (!d) return false;
+      const dt = d instanceof Date ? d : new Date(d);
+      return !isDoneColumn(colTitle) && dt >= today && dt < tomorrow;
+    }).length;
+
+    const goalsSnap = await goalsCol().where("userId", "==", userId).get();
+    const activeGoalsRaw = goalsSnap.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .filter((g: any) => (g.progress ?? 0) < 100)
+      .sort((a: any, b: any) => {
+        const da = a.dueDate?.toDate?.() ?? (a.dueDate ? new Date(a.dueDate) : new Date(0));
+        const db_ = b.dueDate?.toDate?.() ?? (b.dueDate ? new Date(b.dueDate) : new Date(0));
+        return da.getTime() - db_.getTime();
+      })
+      .slice(0, 3);
+
+    const activeGoals = activeGoalsRaw.map((g: any) => {
+      const goalTasks = tasks.filter((t: any) => t.goalId === g.id);
+      return {
         id: g.id,
         title: g.title,
-        time: "Goal",
-        type: "Goal",
-        date: g.dueDate!, // Guaranteed by query
-        original: g,
-      })),
+        description: g.description,
+        category: g.category,
+        progress: g.progress ?? 0,
+        dueDate: g.dueDate ? timestampToDate(g.dueDate as Timestamp) : null,
+        tasks: goalTasks.map((t: any) => ({ ...t, column: t.column })),
+      };
+    });
+
+    const completedTasks = tasks.filter((t) => isDoneColumn((t.column as any)?.title ?? ""));
+    const completedCount = completedTasks.length;
+
+    const weeklyData = [0, 0, 0, 0, 0, 0, 0];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      const startOfDay = new Date(d);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(d);
+      endOfDay.setHours(23, 59, 59, 999);
+      weeklyData[i] = completedTasks.filter((t) => {
+        const raw = t.createdAt;
+        if (!raw) return false;
+        const u = raw instanceof Date ? raw : new Date(raw);
+        return u >= startOfDay && u <= endOfDay;
+      }).length;
+    }
+
+    const upcomingTasks = tasks.filter((t) => {
+      const d = t.dueDate;
+      if (!d) return false;
+      const dt = d instanceof Date ? d : new Date(d);
+      return dt > tomorrow && dt <= nextWeek;
+    });
+    const goalsAll = await goalsCol().where("userId", "==", userId).get();
+    const upcomingGoals = goalsAll.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        dueDate: doc.data()?.dueDate ? timestampToDate(doc.data().dueDate as Timestamp) : null,
+      }))
+      .filter((g: any) => g.dueDate && g.dueDate >= today && g.dueDate <= nextWeek);
+
+    const events = [
+      ...upcomingTasks.map((t: any) => ({ id: t.id, title: t.title, type: "Task", date: t.dueDate, original: t })),
+      ...upcomingGoals.map((g: any) => ({ id: g.id, title: g.title, type: "Goal", date: g.dueDate, original: g })),
     ]
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .slice(0, 5);
 
     res.json({
-      userName: user?.name || "User",
-      date: new Date().toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "short",
-        day: "numeric",
-      }),
+      userName,
+      date: new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }),
       priorityTaskCount,
-      todaysTasks,
+      todaysTasks: todaysTasks.map((t: any) => ({ ...t, column: t.column })),
       activeGoals,
-      productivity: {
-        completedCount,
-        weeklyData,
-        trend: 0, // Mock for now
-      },
-      events: events.map((e) => ({
+      productivity: { completedCount, weeklyData, trend: 0 },
+      events: events.map((e: any) => ({
         id: e.id,
         title: e.title,
-        time: new Date(e.date!).toLocaleDateString("en-US", {
-          weekday: "short",
-        }), // Just show day for now
+        time: new Date(e.date).toLocaleDateString("en-US", { weekday: "short" }),
         type: e.type,
-        day: new Date(e.date!).getDate().toString(),
+        day: new Date(e.date).getDate().toString(),
       })),
     });
-  } catch (error) {
+  } catch (error: any) {
+    const isNotFound = error?.code === 5 || error?.message?.includes("NOT_FOUND");
+    if (isNotFound) {
+      console.error("[SERVER] Firestore database not found. Create it at https://console.firebase.google.com → your project → Build → Firestore Database → Create database.");
+      const auth = (await import("../lib/firebase")).auth;
+      const firebaseUser = await auth.getUser(req.user!.userId).catch(() => null);
+      const userName = firebaseUser?.displayName ?? "User";
+      return res.json({
+        userName,
+        date: new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }),
+        priorityTaskCount: 0,
+        todaysTasks: [],
+        activeGoals: [],
+        productivity: { completedCount: 0, weeklyData: [0, 0, 0, 0, 0, 0, 0], trend: 0 },
+        events: [],
+      });
+    }
     console.error("Dashboard error:", error);
     res.status(500).json({ message: "Error fetching dashboard data", error });
   }

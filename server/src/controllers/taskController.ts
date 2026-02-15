@@ -1,17 +1,43 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import {
+  db,
+  timestampToDate,
+  dateToTimestamp,
+} from "../lib/firebase";
+import type { Timestamp, DocumentSnapshot } from "firebase-admin/firestore";
 
-const prisma = new PrismaClient();
+const tasksCol = () => db.collection("tasks");
+const columnsCol = () => db.collection("columns");
+const boardsCol = () => db.collection("boards");
 
-// Create a task
-interface CreateTaskBody {
-  title: string;
-  columnId: string;
-  description?: string;
-  priority?: string;
-  dueDate?: string;
-  parentId?: string;
-  goalId?: string;
+async function taskBelongsToUser(taskId: string, userId: string): Promise<boolean> {
+  const task = await tasksCol().doc(taskId).get();
+  if (!task.exists) return false;
+  const columnId = task.data()?.columnId;
+  if (!columnId) return false;
+  const col = await columnsCol().doc(columnId).get();
+  if (!col.exists) return false;
+  const boardId = col.data()?.boardId;
+  if (!boardId) return false;
+  const board = await boardsCol().doc(boardId).get();
+  return board.exists && board.data()?.userId === userId;
+}
+
+function taskToJson(doc: DocumentSnapshot): any {
+  const d = doc.data();
+  if (!d) return null;
+  return {
+    id: doc.id,
+    title: d.title,
+    description: d.description ?? null,
+    priority: d.priority ?? "medium",
+    order: d.order,
+    columnId: d.columnId,
+    goalId: d.goalId ?? null,
+    createdAt: timestampToDate(d.createdAt as Timestamp)?.toISOString() ?? null,
+    dueDate: d.dueDate ? timestampToDate(d.dueDate as Timestamp)?.toISOString() : null,
+    parentId: d.parentId ?? null,
+  };
 }
 
 export const createTask = async (
@@ -27,164 +53,108 @@ export const createTask = async (
       dueDate,
       parentId,
       goalId,
-    } = req.body as CreateTaskBody;
+    } = req.body;
 
-    // Verify column belongs to a board owned by user
-    const column = await prisma.column.findUnique({
-      where: { id: columnId },
-      include: { board: true },
+    const colSnap = await columnsCol().doc(columnId).get();
+    if (!colSnap.exists) return res.status(404).json({ message: "Column not found or unauthorized" });
+    const boardId = colSnap.data()?.boardId;
+    const boardSnap = await boardsCol().doc(boardId).get();
+    if (!boardSnap.exists || boardSnap.data()?.userId !== req.user?.userId)
+      return res.status(404).json({ message: "Column not found or unauthorized" });
+
+    const existing = await tasksCol().where("columnId", "==", columnId).get();
+    const maxOrder = existing.empty ? -1 : Math.max(...existing.docs.map((d) => d.data().order ?? 0));
+    const newOrder = maxOrder + 1;
+
+    const ref = await tasksCol().add({
+      title,
+      columnId,
+      description: description ?? null,
+      priority: priority ?? "medium",
+      dueDate: dueDate ? dateToTimestamp(dueDate) : null,
+      order: newOrder,
+      parentId: parentId ?? null,
+      goalId: goalId ?? null,
+      createdAt: dateToTimestamp(new Date()),
     });
-
-    if (!column || column.board.userId !== req.user?.userId) {
-      return res
-        .status(404)
-        .json({ message: "Column not found or unauthorized" });
-    }
-
-    // Get max order in column to append to bottom
-    const lastTask = await prisma.task.findFirst({
-      where: { columnId },
-      orderBy: { order: "desc" },
-    });
-    const newOrder = lastTask ? lastTask.order + 1 : 0;
-
-    const task = await prisma.task.create({
-      data: {
-        title,
-        columnId,
-        description,
-        priority,
-        dueDate: dueDate ? new Date(dueDate) : null,
-        order: newOrder,
-        parentId,
-        goalId,
-      },
-    });
-
-    res.status(201).json(task);
+    const snap = await ref.get();
+    res.status(201).json(taskToJson(snap));
   } catch (error) {
     res.status(500).json({ message: "Error creating task", error });
   }
 };
 
-// Get a single task
 export const getTask = async (
   req: Request & { user?: { userId: string } },
   res: Response,
 ) => {
   try {
     const { id } = req.params;
-    if (typeof id !== "string") {
-      return res.status(400).json({ message: "Invalid task ID" });
-    }
+    if (typeof id !== "string") return res.status(400).json({ message: "Invalid task ID" });
 
-    const task = await prisma.task.findUnique({
-      where: { id },
-      include: {
-        column: {
-          include: { board: true },
-        },
-        parent: {
-          include: {
-            parent: {
-              include: {
-                parent: true, // Up to 3 levels deep should be enough for now
-              },
-            },
-          },
-        },
-        subtasks: {
-          include: { column: true },
-          orderBy: { order: "asc" },
-        },
-      },
-    });
+    const allowed = await taskBelongsToUser(id, req.user?.userId ?? "");
+    if (!allowed) return res.status(404).json({ message: "Task not found" });
 
-    if (!task || task.column.board.userId !== req.user?.userId) {
-      return res.status(404).json({ message: "Task not found" });
-    }
+    const snap = await tasksCol().doc(id).get();
+    if (!snap.exists) return res.status(404).json({ message: "Task not found" });
 
+    const task = taskToJson(snap);
+    const colSnap = await columnsCol().doc(task.columnId).get();
+    const boardId = colSnap.data()?.boardId;
+    task.column = { id: task.columnId, ...colSnap.data(), board: { id: boardId } };
+    task.parent = null;
+    task.subtasks = [];
     res.json(task);
   } catch (error) {
     res.status(500).json({ message: "Error fetching task", error });
   }
 };
 
-// Update a task (move between columns, reorder, edit content)
 export const updateTask = async (
   req: Request & { user?: { userId: string } },
   res: Response,
 ) => {
   try {
     const { id } = req.params;
-    const { title, description, priority, dueDate, columnId, order, goalId } =
-      req.body;
+    const { title, description, priority, dueDate, columnId, order, goalId } = req.body;
+    if (typeof id !== "string") return res.status(400).json({ message: "Invalid task ID" });
 
-    if (typeof id !== "string") {
-      return res.status(400).json({ message: "Invalid task ID" });
+    const allowed = await taskBelongsToUser(id, req.user?.userId ?? "");
+    if (!allowed) return res.status(404).json({ message: "Task not found or unauthorized" });
+
+    const update: Record<string, unknown> = {};
+    if (title !== undefined) update.title = title;
+    if (description !== undefined) update.description = description;
+    if (priority !== undefined) update.priority = priority;
+    if (dueDate !== undefined) update.dueDate = dueDate ? dateToTimestamp(dueDate) : null;
+    if (columnId !== undefined) update.columnId = columnId;
+    if (order !== undefined) update.order = order;
+    if (goalId !== undefined) update.goalId = goalId;
+    if (Object.keys(update).length === 0) {
+      const snap = await tasksCol().doc(id).get();
+      return res.json(taskToJson(snap));
     }
 
-    // Verify task ownership
-    const existingTask = await prisma.task.findUnique({
-      where: { id },
-      include: {
-        column: {
-          include: { board: true },
-        },
-      },
-    });
-
-    if (
-      !existingTask ||
-      existingTask.column.board.userId !== req.user?.userId
-    ) {
-      return res
-        .status(404)
-        .json({ message: "Task not found or unauthorized" });
-    }
-
-    const task = await prisma.task.update({
-      where: { id },
-      data: {
-        title,
-        description,
-        priority,
-        dueDate: dueDate ? new Date(dueDate) : undefined,
-        columnId,
-        order,
-        goalId,
-      },
-    });
-
-    res.json(task);
+    await tasksCol().doc(id).update(update);
+    const snap = await tasksCol().doc(id).get();
+    res.json(taskToJson(snap));
   } catch (error) {
     res.status(500).json({ message: "Error updating task", error });
   }
 };
 
-// Delete a task
 export const deleteTask = async (
   req: Request & { user?: { userId: string } },
   res: Response,
 ) => {
   try {
     const { id } = req.params;
+    if (typeof id !== "string") return res.status(400).json({ message: "Invalid task ID" });
 
-    if (typeof id !== "string") {
-      return res.status(400).json({ message: "Invalid task ID" });
-    }
+    const allowed = await taskBelongsToUser(id, req.user?.userId ?? "");
+    if (!allowed) return res.status(404).json({ message: "Task not found" });
 
-    // Verify ownership
-    const output = await prisma.task.findUnique({
-      where: { id },
-      include: { column: { include: { board: true } } },
-    });
-
-    if (!output || output.column.board.userId !== req.user?.userId) {
-      return res.status(404).json({ message: "Task not found" });
-    }
-
-    await prisma.task.delete({ where: { id } });
+    await tasksCol().doc(id).delete();
     res.json({ message: "Task deleted" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting task", error });

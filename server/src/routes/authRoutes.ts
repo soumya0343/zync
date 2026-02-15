@@ -1,12 +1,10 @@
 import { Router } from "express";
-import { register, login, getMe, logout } from "../controllers/authController";
+import { getMe } from "../controllers/authController";
 import { authenticateToken } from "../middleware/auth";
 
 const router = Router();
 
-router.post("/register", register);
-router.post("/login", login);
-router.post("/logout", logout);
+// Auth is handled by Firebase on the client. Server only exposes /me for profile.
 router.get("/me", authenticateToken, getMe);
 
 export default router;

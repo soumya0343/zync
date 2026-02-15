@@ -5,6 +5,8 @@ import TaskModal from "../../components/TaskModal";
 import TasksBoardHeader from "./components/TasksBoardHeader";
 import QuickAddBar from "./components/QuickAddBar";
 import KanbanColumn from "./components/KanbanColumn";
+import LoadingScreen from "../../components/common/LoadingScreen";
+import EmptyState from "../../components/common/EmptyState";
 import { boardService } from "../../services/boardService";
 import { taskService } from "../../services/taskService";
 import type { KanbanTask, KanbanStatus } from "../../types";
@@ -152,8 +154,11 @@ const Tasks = () => {
   };
 
   if (loading) {
-    return <div className="tasks-page">Loading...</div>;
+    return <LoadingScreen message="Loading board…" />;
   }
+
+  const hasColumns = columns.length > 0;
+  const totalTasks = columns.reduce((sum, col) => sum + (col.tasks?.length ?? 0), 0);
 
   return (
     <div className="tasks-page">
@@ -168,7 +173,27 @@ const Tasks = () => {
       />
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="kanban-board">
-          {columns.map((col: any) => {
+          {!hasColumns ? (
+            <EmptyState
+              icon="📋"
+              title="No board yet"
+              description="Your task board will appear here once set up."
+              actionLabel="Add your first task"
+              onAction={() => setIsTaskModalOpen(true)}
+            />
+          ) : totalTasks === 0 ? (
+            <div className="tasks-empty-wrapper">
+              <EmptyState
+                icon="✓"
+                title="No tasks yet"
+                description="Add a task above or open the menu to create one."
+                actionLabel="Add task"
+                onAction={() => setIsTaskModalOpen(true)}
+                compact
+              />
+            </div>
+          ) : null}
+          {hasColumns && totalTasks > 0 && columns.map((col: any) => {
             // Map tasks for this column
             const kanbanTasks = col.tasks.map(mapToKanbanTask);
 

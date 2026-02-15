@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { goalService } from "../../services/goalService";
 import type { Goal } from "../../types";
+import LoadingScreen from "../../components/common/LoadingScreen";
+import EmptyState from "../../components/common/EmptyState";
 import { CATEGORY_CONFIG } from "./goalData";
 import type { GoalCategory } from "./goalData";
 import "./Goals.css";
@@ -86,7 +88,9 @@ const Goals = () => {
     }
   };
 
-  if (loading) return <div className="goals-page">Loading...</div>;
+  if (loading) return <LoadingScreen message="Loading goals…" />;
+
+  const showEmptyGoals = filtered.length === 0;
 
   return (
     <div className="goals-page">
@@ -151,7 +155,34 @@ const Goals = () => {
 
       {/* ─ Grid ─ */}
       <div className="goals-grid">
-        {filtered.map((goal) => {
+        {showEmptyGoals && activeTab !== "all" ? (
+          <div className="goals-empty-inline">
+            <EmptyState
+              icon="🎯"
+              title={`No ${activeTab === "completed" ? "completed" : activeTab} goals`}
+              description={
+                activeTab === "completed"
+                  ? "Complete a goal to see it here."
+                  : "Create a goal to get started."
+              }
+              actionLabel="Create goal"
+              onAction={() => setShowCreate(true)}
+              compact
+            />
+          </div>
+        ) : null}
+        {showEmptyGoals && activeTab === "all" ? (
+          <div className="goals-empty-full">
+            <EmptyState
+              icon="🎯"
+              title="No goals yet"
+              description="Set your first goal and break it down into tasks."
+              actionLabel="Create your first goal"
+              onAction={() => setShowCreate(true)}
+            />
+          </div>
+        ) : null}
+        {!showEmptyGoals && filtered.map((goal) => {
           const cat =
             CATEGORY_CONFIG[goal.category as GoalCategory] ||
             CATEGORY_CONFIG["short-term"];
@@ -223,14 +254,16 @@ const Goals = () => {
           );
         })}
 
-        {/* + Create New Goal card */}
-        <div className="goal-card-new" onClick={() => setShowCreate(true)}>
-          <div className="goal-new-icon">+</div>
-          <span className="goal-new-title">Create New Goal</span>
-          <span className="goal-new-desc">
-            Set your sights on something new.
-          </span>
-        </div>
+        {/* + Create New Goal card — only when there are goals to show alongside */}
+        {!showEmptyGoals && (
+          <div className="goal-card-new" onClick={() => setShowCreate(true)}>
+            <div className="goal-new-icon">+</div>
+            <span className="goal-new-title">Create New Goal</span>
+            <span className="goal-new-desc">
+              Set your sights on something new.
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ─ Create Goal Modal ─ */}

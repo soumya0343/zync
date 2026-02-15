@@ -1,32 +1,70 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import {
+  db,
+  timestampToDate,
+  dateToTimestamp,
+} from "../lib/firebase";
+import type { Timestamp, DocumentSnapshot } from "firebase-admin/firestore";
 
-const prisma = new PrismaClient();
+const goalsCol = () => db.collection("goals");
+const tasksCol = () => db.collection("tasks");
+const columnsCol = () => db.collection("columns");
 
-// Get all goals for the user
+function goalToJson(doc: DocumentSnapshot, includeTasks = false): any {
+  const d = doc.data();
+  if (!d) return null;
+  const g: any = {
+    id: doc.id,
+    title: d.title,
+    description: d.description ?? null,
+    category: d.category,
+    progress: d.progress ?? 0,
+    dueDate: d.dueDate ? timestampToDate(d.dueDate as Timestamp)?.toISOString() : null,
+    userId: d.userId,
+    createdAt: timestampToDate(d.createdAt as Timestamp)?.toISOString() ?? null,
+  };
+  if (includeTasks) g.tasks = [];
+  return g;
+}
+
 export const getGoals = async (
   req: Request & { user?: { userId: string } },
   res: Response,
 ) => {
   try {
     const userId = req.user?.userId;
-    const goals = await prisma.goal.findMany({
-      where: { userId },
-      include: {
-        tasks: {
-          include: { column: true },
-          orderBy: { order: "asc" },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const snap = await goalsCol().where("userId", "==", userId).get();
+    const docsSorted = [...snap.docs].sort(
+      (a, b) => (b.data().createdAt?.toMillis?.() ?? 0) - (a.data().createdAt?.toMillis?.() ?? 0),
+    );
+    const goals = [];
+    for (const doc of docsSorted) {
+      const g = goalToJson(doc, true);
+      if (g) {
+        const tasksSnap = await tasksCol().where("goalId", "==", doc.id).get();
+        const taskDocsSorted = [...tasksSnap.docs].sort((a, b) => (a.data().order ?? 0) - (b.data().order ?? 0));
+        g.tasks = taskDocsSorted.map((t) => {
+          const td = t.data();
+          return {
+            id: t.id,
+            ...td,
+            createdAt: timestampToDate(td.createdAt as Timestamp)?.toISOString(),
+            dueDate: td.dueDate ? timestampToDate(td.dueDate as Timestamp)?.toISOString() : null,
+            column: { id: td.columnId },
+          };
+        });
+        goals.push(g);
+      }
+    }
     res.json(goals);
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 5 || error?.message?.includes("NOT_FOUND")) {
+      return res.json([]);
+    }
     res.status(500).json({ message: "Error fetching goals", error });
   }
 };
 
-// Get a single goal by ID
 export const getGoal = async (
   req: Request & { user?: { userId: string } },
   res: Response,
@@ -34,30 +72,34 @@ export const getGoal = async (
   try {
     const { id } = req.params;
     const userId = req.user?.userId;
-
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-    const goal = await prisma.goal.findFirst({
-      where: { id: id as string, userId },
-      include: {
-        tasks: {
-          include: { column: true }, // Include status/column info
-          orderBy: { order: "asc" },
-        },
-      },
-    });
+    const doc = await goalsCol().doc(id as string).get();
+    if (!doc.exists || doc.data()?.userId !== userId)
+      return res.status(404).json({ message: "Goal not found" });
 
-    if (!goal) {
+    const g = goalToJson(doc, true);
+    const tasksSnap = await tasksCol().where("goalId", "==", id).get();
+    const taskDocsSorted = [...tasksSnap.docs].sort((a, b) => (a.data().order ?? 0) - (b.data().order ?? 0));
+    g.tasks = taskDocsSorted.map((t) => {
+      const td = t.data();
+      return {
+        id: t.id,
+        ...td,
+        createdAt: timestampToDate(td.createdAt as Timestamp)?.toISOString(),
+        dueDate: td.dueDate ? timestampToDate(td.dueDate as Timestamp)?.toISOString() : null,
+        column: { id: td.columnId },
+      };
+    });
+    res.json(g);
+  } catch (error: any) {
+    if (error?.code === 5 || error?.message?.includes("NOT_FOUND")) {
       return res.status(404).json({ message: "Goal not found" });
     }
-
-    res.json(goal);
-  } catch (error) {
     res.status(500).json({ message: "Error fetching goal", error });
   }
 };
 
-// Create a new goal
 export const createGoal = async (
   req: Request & { user?: { userId: string } },
   res: Response,
@@ -65,104 +107,81 @@ export const createGoal = async (
   try {
     const { title, description, category, dueDate } = req.body;
     const userId = req.user?.userId;
-
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-    const goal = await prisma.goal.create({
-      data: {
-        title: title as string,
-        description: description as string,
-        category: category as string,
-        dueDate: dueDate ? new Date(dueDate as string) : null,
-        userId,
-      },
-      include: { tasks: true },
+    const ref = await goalsCol().add({
+      title,
+      description: description ?? null,
+      category: category ?? "general",
+      progress: 0,
+      dueDate: dueDate ? dateToTimestamp(dueDate) : null,
+      userId,
+      createdAt: dateToTimestamp(new Date()),
     });
-    res.status(201).json(goal);
+    const snap = await ref.get();
+    const g = goalToJson(snap);
+    if (g) g.tasks = [];
+    res.status(201).json(g);
   } catch (error) {
     res.status(500).json({ message: "Error creating goal", error });
   }
 };
 
-// Update a goal
 export const updateGoal = async (
   req: Request & { user?: { userId: string } },
   res: Response,
 ) => {
   try {
     const { id } = req.params;
-    const { title, description, category, progress, dueDate, taskIds } =
-      req.body;
-    const userId = req.user?.userId;
+    const { title, description, category, progress, dueDate, taskIds } = req.body;
+    if (typeof id !== "string") return res.status(400).json({ message: "Invalid goal ID" });
 
-    if (typeof id !== "string") {
-      return res.status(400).json({ message: "Invalid goal ID" });
-    }
-
-    // Verify ownership
-    const existingGoal = await prisma.goal.findFirst({
-      where: { id, userId },
-    });
-
-    if (!existingGoal) {
+    const doc = await goalsCol().doc(id).get();
+    if (!doc.exists || doc.data()?.userId !== req.user?.userId)
       return res.status(404).json({ message: "Goal not found" });
-    }
 
-    // Prepare data for update
-    const data: any = {
-      title,
-      description,
-      category,
-      progress,
-      dueDate: dueDate ? new Date(dueDate) : undefined,
-    };
+    const update: Record<string, unknown> = {};
+    if (title !== undefined) update.title = title;
+    if (description !== undefined) update.description = description;
+    if (category !== undefined) update.category = category;
+    if (progress !== undefined) update.progress = progress;
+    if (dueDate !== undefined) update.dueDate = dueDate ? dateToTimestamp(dueDate) : null;
+    if (Object.keys(update).length > 0) await goalsCol().doc(id).update(update);
 
-    // If taskIds are provided, update relations
     if (taskIds && Array.isArray(taskIds)) {
-      // Connect these tasks to this goal.
-      // Note: This simplistic approach connects new tasks. To disconnect, you might need a different strategy or handle it explicitly.
-      // For now, let's assume we are adding tasks or replacing the list if using `set`.
-      // Using `set` replaces all connected tasks with the provided list.
-      data.tasks = {
-        set: taskIds.map((taskId: string) => ({ id: taskId })),
-      };
+      const batch = db.batch();
+      const existing = await tasksCol().where("goalId", "==", id).get();
+      existing.docs.forEach((d) => batch.update(d.ref, { goalId: null }));
+      for (const taskId of taskIds) {
+        const taskRef = tasksCol().doc(taskId);
+        const t = await taskRef.get();
+        if (t.exists) batch.update(taskRef, { goalId: id });
+      }
+      await batch.commit();
     }
 
-    const goal = await prisma.goal.update({
-      where: { id },
-      data,
-      include: { tasks: true },
-    });
-
-    res.json(goal);
+    const updated = await goalsCol().doc(id).get();
+    const g = goalToJson(updated);
+    if (g) g.tasks = [];
+    res.json(g);
   } catch (error) {
     res.status(500).json({ message: "Error updating goal", error });
   }
 };
 
-// Delete a goal
 export const deleteGoal = async (
   req: Request & { user?: { userId: string } },
   res: Response,
 ) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.userId;
+    if (typeof id !== "string") return res.status(400).json({ message: "Invalid goal ID" });
 
-    if (typeof id !== "string") {
-      return res.status(400).json({ message: "Invalid goal ID" });
-    }
-
-    // Verify ownership
-    const existingGoal = await prisma.goal.findFirst({
-      where: { id, userId },
-    });
-
-    if (!existingGoal) {
+    const doc = await goalsCol().doc(id).get();
+    if (!doc.exists || doc.data()?.userId !== req.user?.userId)
       return res.status(404).json({ message: "Goal not found" });
-    }
 
-    await prisma.goal.delete({ where: { id } });
+    await goalsCol().doc(id).delete();
     res.json({ message: "Goal deleted" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting goal", error });

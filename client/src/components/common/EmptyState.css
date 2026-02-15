@@ -1,0 +1,87 @@
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+  min-height: 200px;
+}
+
+.empty-state--compact {
+  padding: 1.5rem 1rem;
+  min-height: 120px;
+}
+
+.empty-state-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+  margin-bottom: 0.75rem;
+  opacity: 0.85;
+}
+
+.empty-state--compact .empty-state-icon {
+  font-size: 1.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary, #212529);
+  margin: 0 0 0.25rem;
+}
+
+.empty-state--compact .empty-state-title {
+  font-size: 1rem;
+}
+
+.empty-state-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #868e96);
+  margin: 0 0 1.25rem;
+  max-width: 320px;
+  line-height: 1.45;
+}
+
+.empty-state--compact .empty-state-description {
+  margin-bottom: 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.empty-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.empty-state-btn {
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.empty-state-btn--primary {
+  background-color: #1a1a1a;
+  color: #fff;
+}
+
+.empty-state-btn--primary:hover {
+  background-color: #333;
+}
+
+.empty-state-btn--secondary {
+  background-color: var(--bg-hover, #f1f3f5);
+  color: var(--text-primary, #212529);
+  border: 1px solid var(--border, #e9ecef);
+}
+
+.empty-state-btn--secondary:hover {
+  background-color: #e9ecef;
+}

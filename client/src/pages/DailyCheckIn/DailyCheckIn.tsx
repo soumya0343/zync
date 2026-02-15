@@ -3,6 +3,8 @@ import {
   checkInService,
   type CheckInEntry,
 } from "../../services/checkInService";
+import LoadingScreen from "../../components/common/LoadingScreen";
+import EmptyState from "../../components/common/EmptyState";
 import "./DailyCheckIn.css";
 
 const MOODS = [
@@ -86,7 +88,7 @@ const DailyCheckIn = () => {
     }
   };
 
-  if (loading) return <div className="checkin-page">Loading...</div>;
+  if (loading) return <LoadingScreen message="Loading check-in…" />;
 
   // Compute streak (consecutive calendar days with a check-in from today backward) and avg hours
   const today = new Date();
@@ -385,7 +387,15 @@ const DailyCheckIn = () => {
             </div>
 
             <div className="history-list">
-              {history.map((entry) => {
+              {history.length === 0 ? (
+                <EmptyState
+                  icon="📋"
+                  title="No check-ins yet"
+                  description="Complete your first check-in below to start tracking."
+                  compact
+                />
+              ) : (
+                history.map((entry) => {
                 const moodIndex = MOODS.findIndex(
                   (m) =>
                     m.label.toLowerCase() === (entry.mood ?? "").toLowerCase(),
@@ -432,7 +442,8 @@ const DailyCheckIn = () => {
                     <p className="history-entry-work">{entry.content}</p>
                   </div>
                 );
-              })}
+              })
+              )}
             </div>
 
             <div className="history-drawer-footer">

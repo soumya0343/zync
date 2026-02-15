@@ -5,6 +5,9 @@ import ActiveGoals from "./components/ActiveGoals";
 import ProductivityChart from "./components/ProductivityChart";
 import UpcomingEvents from "./components/UpcomingEvents";
 import QuoteWidget from "./components/QuoteWidget";
+import LoadingScreen from "../../components/common/LoadingScreen";
+import "../../components/common/LoadingScreen.css";
+import EmptyState from "../../components/common/EmptyState";
 import {
   dashboardService,
   type DashboardData,
@@ -33,12 +36,20 @@ const Dashboard = () => {
   }, []);
 
   if (loading) {
-    return <div className="dashboard-pageLoading">Loading dashboard...</div>;
+    return <LoadingScreen message="Loading dashboard…" />;
   }
 
   if (error || !data) {
     return (
-      <div className="dashboard-pageError">{error || "No data available"}</div>
+      <div className="loading-screen">
+        <EmptyState
+          icon="⚠️"
+          title="Couldn’t load dashboard"
+          description={error || "No data available. Try again in a moment."}
+          actionLabel="Retry"
+          onAction={() => window.location.reload()}
+        />
+      </div>
     );
   }
 

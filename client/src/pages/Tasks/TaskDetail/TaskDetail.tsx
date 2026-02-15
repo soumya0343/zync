@@ -4,6 +4,8 @@ import { taskService } from "../../../services/taskService";
 import { boardService } from "../../../services/boardService";
 import TaskModal from "../../../components/TaskModal";
 import StatusSelect from "../../../components/common/StatusSelect";
+import LoadingScreen from "../../../components/common/LoadingScreen";
+import EmptyState from "../../../components/common/EmptyState";
 import "./TaskDetail.css";
 
 // Helper to map backend task to UI format
@@ -120,7 +122,7 @@ const TaskDetail = () => {
   // const handleCreateSubtask removed as we use modal now
   // const handleKeyDown removed as we use modal now
 
-  if (loading) return <div className="task-detail-page">Loading...</div>;
+  if (loading) return <LoadingScreen message="Loading task…" />;
 
   if (error || !task) {
     return (
@@ -278,7 +280,14 @@ const TaskDetail = () => {
 
               {(!task.subtasks || task.subtasks.length === 0) && (
                 <div className="td-empty-subtasks">
-                  No subtasks yet. Add one below to break this task down.
+                  <EmptyState
+                    icon="📎"
+                    title="No subtasks yet"
+                    description="Break this task down into smaller steps."
+                    actionLabel="Add subtask"
+                    onAction={() => setIsSubtaskModalOpen(true)}
+                    compact
+                  />
                 </div>
               )}
 

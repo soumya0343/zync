@@ -173,6 +173,19 @@
   gap: 1.25rem;
 }
 
+.goals-empty-inline,
+.goals-empty-full {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.goals-empty-full {
+  min-height: 220px;
+  align-items: center;
+}
+
 @media (max-width: 1000px) {
   .goals-grid {
     grid-template-columns: repeat(2, 1fr);

@@ -10,6 +10,13 @@ lerna-debug.log*
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
+# Firebase (service account keys and local/debug files only; keep .firebaserc, firebase.json)
+*-firebase-adminsdk-*.json
+.firebase/
+firebase-debug.log
+firestore-debug.log
+*.runtimeconfig.json
+
 # Runtime data
 pids
 *.pid

@@ -8,6 +8,8 @@ import type { Board, Column } from "../../types";
 import { ChevronRight, Calendar, Plus, Edit2 } from "lucide-react";
 import TaskItem from "../Dashboard/components/TaskItem";
 import TaskModal from "../../components/TaskModal";
+import LoadingScreen from "../../components/common/LoadingScreen";
+import EmptyState from "../../components/common/EmptyState";
 import type { GoalCategory } from "./goalData";
 import "./Goals.css";
 
@@ -112,18 +114,7 @@ const GoalDetail = () => {
   };
 
   if (loading) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100%",
-        }}
-      >
-        Loading...
-      </div>
-    );
+    return <LoadingScreen message="Loading goal…" />;
   }
 
   if (error || !goal) {
@@ -485,9 +476,14 @@ const GoalDetail = () => {
               );
             })
           ) : (
-            <p style={{ color: "#9ca3af", fontStyle: "italic" }}>
-              No tasks linked to this goal yet.
-            </p>
+            <EmptyState
+              icon="📋"
+              title="No tasks linked yet"
+              description="Link tasks to this goal to track progress."
+              actionLabel="Add task"
+              onAction={() => setIsTaskModalOpen(true)}
+              compact
+            />
           )}
         </div>
       </div>

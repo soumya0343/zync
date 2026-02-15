@@ -13,8 +13,9 @@ const Signup = () => {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { register } = useAuth();
+  const { register, loginWithGoogle, loginWithApple } = useAuth();
   const navigate = useNavigate();
+  const [providerLoading, setProviderLoading] = useState<"google" | "apple" | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,6 +149,20 @@ const Signup = () => {
 
       <div style={{ display: "flex", gap: "1rem" }}>
         <button
+          type="button"
+          disabled={!!providerLoading}
+          onClick={async () => {
+            setError("");
+            setProviderLoading("google");
+            try {
+              await loginWithGoogle();
+              navigate("/");
+            } catch (err: any) {
+              setError(err.message || "Google sign-in failed");
+            } finally {
+              setProviderLoading(null);
+            }
+          }}
           style={{
             flex: 1,
             height: "48px",
@@ -158,7 +173,8 @@ const Signup = () => {
             alignItems: "center",
             justifyContent: "center",
             gap: "0.5rem",
-            cursor: "pointer",
+            cursor: providerLoading ? "not-allowed" : "pointer",
+            opacity: providerLoading ? 0.7 : 1,
             fontSize: "0.925rem",
             fontWeight: 500,
             color: "#374151",
@@ -190,9 +206,23 @@ const Signup = () => {
               fill="#EA4335"
             />
           </svg>
-          Google
+          {providerLoading === "google" ? "Signing up…" : "Google"}
         </button>
         <button
+          type="button"
+          disabled={!!providerLoading}
+          onClick={async () => {
+            setError("");
+            setProviderLoading("apple");
+            try {
+              await loginWithApple();
+              navigate("/");
+            } catch (err: any) {
+              setError(err.message || "Apple sign-in failed");
+            } finally {
+              setProviderLoading(null);
+            }
+          }}
           style={{
             flex: 1,
             height: "48px",
@@ -203,7 +233,8 @@ const Signup = () => {
             alignItems: "center",
             justifyContent: "center",
             gap: "0.5rem",
-            cursor: "pointer",
+            cursor: providerLoading ? "not-allowed" : "pointer",
+            opacity: providerLoading ? 0.7 : 1,
             fontSize: "0.925rem",
             fontWeight: 500,
             color: "#374151",
@@ -220,7 +251,7 @@ const Signup = () => {
           >
             <path d="M17.05 20.28c-.98.95-2.05.88-3.08.38-1.07-.52-2.07-.53-3.2 0-1.44.71-2.01.56-3.15-.48-5.24-4.85-4.35-13.19 1.69-13.43 1.61-.06 2.76.99 3.63.99.91 0 2.45-1.16 4.09-.99 1.34.13 2.59.58 3.51 1.76-3.23 1.95-2.66 6.31.59 7.64-.69 1.73-1.63 3.43-2.91 4.71-.46.46-.94.9-1.17 1.42zM12.03 7.25c-.23-2.3 1.6-4.14 3.73-4.25.31 2.52-2.18 4.41-3.73 4.25z" />
           </svg>
-          Apple
+          {providerLoading === "apple" ? "Signing up…" : "Apple"}
         </button>
       </div>
 

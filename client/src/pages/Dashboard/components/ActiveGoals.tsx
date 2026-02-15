@@ -1,5 +1,7 @@
+import { useNavigate } from "react-router-dom";
 import type { Goal } from "../../../types";
 import GoalCard from "./GoalCard";
+import EmptyState from "../../../components/common/EmptyState";
 import "./DashboardComponents.css";
 
 interface ActiveGoalsProps {
@@ -7,6 +9,9 @@ interface ActiveGoalsProps {
 }
 
 const ActiveGoals = ({ goals }: ActiveGoalsProps) => {
+  const navigate = useNavigate();
+  const isEmpty = !goals?.length;
+
   return (
     <div className="section-container">
       <div className="section-header">
@@ -14,11 +19,22 @@ const ActiveGoals = ({ goals }: ActiveGoalsProps) => {
           <span className="icon-target">🎯</span> Active Goals
         </div>
       </div>
-      <div className="goals-grid">
-        {goals.map((goal) => (
-          <GoalCard key={goal.id} goal={goal} />
-        ))}
-      </div>
+      {isEmpty ? (
+        <EmptyState
+          icon="🎯"
+          title="No active goals"
+          description="Create a goal to track progress."
+          actionLabel="Go to goals"
+          onAction={() => navigate("/goals")}
+          compact
+        />
+      ) : (
+        <div className="goals-grid">
+          {goals.map((goal) => (
+            <GoalCard key={goal.id} goal={goal} />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
