@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
-import { getAllGoals, CATEGORY_CONFIG, addGoal } from "./goalData";
+import { goalService } from "../../services/goalService";
+import { CATEGORY_CONFIG } from "./goalData";
 import type { GoalCategory } from "./goalData";
 import "./Goals.css";
 
@@ -23,8 +24,23 @@ const Goals = () => {
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [showCreate, setShowCreate] = useState(false);
-  const [, forceUpdate] = useState(0);
-  const rerender = useCallback(() => forceUpdate((n) => n + 1), []);
+  const [goals, setGoals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchGoals = useCallback(async () => {
+    try {
+      const data = await goalService.getGoals();
+      setGoals(data);
+    } catch (error) {
+      console.error("Failed to fetch goals", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchGoals();
+  }, [fetchGoals]);
 
   // Listen for sidebar "+ New Goal" button
   useEffect(() => {
@@ -39,8 +55,6 @@ const Goals = () => {
   const [newCategory, setNewCategory] = useState<GoalCategory>("short-term");
   const [newDueDate, setNewDueDate] = useState("");
 
-  const goals = getAllGoals();
-
   const filtered = goals.filter((g) => {
     if (activeTab !== "all" && g.category !== activeTab) return false;
     if (search && !g.title.toLowerCase().includes(search.toLowerCase()))
@@ -50,21 +64,27 @@ const Goals = () => {
 
   const activeCount = goals.filter((g) => g.category !== "completed").length;
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!newTitle.trim()) return;
-    addGoal(
-      newTitle.trim(),
-      newDesc.trim() || "No description yet.",
-      newCategory,
-      newDueDate || undefined,
-    );
-    setNewTitle("");
-    setNewDesc("");
-    setNewCategory("short-term");
-    setNewDueDate("");
-    setShowCreate(false);
-    rerender();
+    try {
+      await goalService.createGoal({
+        title: newTitle.trim(),
+        description: newDesc.trim() || "No description yet.",
+        category: newCategory,
+        dueDate: newDueDate || undefined,
+      });
+      fetchGoals();
+      setNewTitle("");
+      setNewDesc("");
+      setNewCategory("short-term");
+      setNewDueDate("");
+      setShowCreate(false);
+    } catch (error) {
+      console.error("Failed to create goal", error);
+    }
   };
+
+  if (loading) return <div className="goals-page">Loading...</div>;
 
   return (
     <div className="goals-page">
@@ -130,7 +150,9 @@ const Goals = () => {
       {/* ─ Grid ─ */}
       <div className="goals-grid">
         {filtered.map((goal) => {
-          const cat = CATEGORY_CONFIG[goal.category];
+          const cat =
+            CATEGORY_CONFIG[goal.category as GoalCategory] ||
+            CATEGORY_CONFIG["short-term"];
           const isComplete = goal.progress >= 100;
           return (
             <div className="goal-card" key={goal.id}>
@@ -169,26 +191,13 @@ const Goals = () => {
               <div className="goal-card-footer">
                 <span className="goal-footer-item">
                   <span className="goal-footer-icon">📋</span>
-                  {goal.taskIds.length} Task
-                  {goal.taskIds.length !== 1 ? "s" : ""}
+                  {goal.tasks?.length || 0} Task
+                  {(goal.tasks?.length || 0) !== 1 ? "s" : ""}
                 </span>
-                {goal.dueLabel && (
-                  <span
-                    className={`goal-footer-item ${goal.dueSeverity || ""}`}
-                  >
-                    {goal.dueSeverity === "urgent" && (
-                      <span className="goal-footer-icon">⚠</span>
-                    )}
-                    {goal.dueSeverity === "done" && (
-                      <span className="goal-footer-icon">✅</span>
-                    )}
-                    {goal.dueLabel}
-                  </span>
-                )}
-                {!goal.dueLabel && goal.dueDate && (
+                {goal.dueDate && (
                   <span className="goal-footer-item">
                     <span className="goal-footer-icon">📅</span>
-                    {goal.dueDate}
+                    {new Date(goal.dueDate).toLocaleDateString()}
                   </span>
                 )}
               </div>
@@ -268,9 +277,8 @@ const Goals = () => {
                 <label className="goal-form-label goal-form-half">
                   Due Date
                   <input
-                    type="text"
+                    type="date"
                     className="goal-form-input"
-                    placeholder="e.g. Mar 31, 2024"
                     value={newDueDate}
                     onChange={(e) => setNewDueDate(e.target.value)}
                   />

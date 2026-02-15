@@ -4,12 +4,22 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 // Create a task
+interface CreateTaskBody {
+  title: string;
+  columnId: string;
+  description?: string;
+  priority?: string;
+  dueDate?: string;
+  parentId?: string;
+}
+
 export const createTask = async (
   req: Request & { user?: { userId: string } },
   res: Response,
 ) => {
   try {
-    const { title, columnId, description, priority, dueDate } = req.body;
+    const { title, columnId, description, priority, dueDate, parentId } =
+      req.body as CreateTaskBody;
 
     // Verify column belongs to a board owned by user
     const column = await prisma.column.findUnique({
@@ -38,12 +48,47 @@ export const createTask = async (
         priority,
         dueDate: dueDate ? new Date(dueDate) : null,
         order: newOrder,
+        parentId,
       },
     });
 
     res.status(201).json(task);
   } catch (error) {
     res.status(500).json({ message: "Error creating task", error });
+  }
+};
+
+// Get a single task
+export const getTask = async (
+  req: Request & { user?: { userId: string } },
+  res: Response,
+) => {
+  try {
+    const { id } = req.params;
+    if (typeof id !== "string") {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    const task = await prisma.task.findUnique({
+      where: { id },
+      include: {
+        column: {
+          include: { board: true },
+        },
+        subtasks: {
+          include: { column: true },
+          orderBy: { order: "asc" },
+        },
+      },
+    });
+
+    if (!task || task.column.board.userId !== req.user?.userId) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    res.json(task);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching task", error });
   }
 };
 

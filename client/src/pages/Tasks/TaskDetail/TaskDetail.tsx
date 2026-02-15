@@ -1,16 +1,37 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  getTask,
-  getChildren,
-  addChild,
-  cycleTaskStatus,
-  updateTaskStatus,
-  getTopLevelTaskId,
-} from "../taskStore";
-import type { TaskNode } from "../taskStore";
-import { getGoal, CATEGORY_CONFIG } from "../../../pages/Goals/goalData";
+import { taskService } from "../../../services/taskService";
+import { boardService } from "../../../services/boardService";
 import "./TaskDetail.css";
+
+// Helper to map backend task to UI format
+const mapTaskToUI = (task: any) => {
+  const status = task.column?.title.toLowerCase().replace(" ", "-") || "todo";
+  const priority = task.priority?.toLowerCase() || "medium";
+
+  const colors: Record<string, string> = {
+    backlog: "#6b7280",
+    todo: "#6b7280",
+    planned: "#f59e0b",
+    "in-progress": "#8b5cf6",
+    blocked: "#ef4444",
+    done: "#16a34a",
+  };
+
+  return {
+    ...task,
+    status,
+    priority,
+    statusColor: colors[status] || "#6b7280",
+    breadcrumb: ["TASKS", task.column?.board?.title || "Board"],
+    tag: "TASK",
+    assignee: "Me", // Hardcoded for now
+    dueDate: task.dueDate ? new Date(task.dueDate).toLocaleDateString() : null,
+    created: new Date(task.createdAt).toLocaleDateString(),
+    bullets: [],
+    subtasks: task.subtasks || [],
+  };
+};
 
 const STATUS_BADGE: Record<
   string,
@@ -27,25 +48,91 @@ const STATUS_BADGE: Record<
 const TaskDetail = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
-  const [, forceUpdate] = useState(0);
-  const rerender = useCallback(() => forceUpdate((n) => n + 1), []);
-
-  const [newSubtask, setNewSubtask] = useState("");
+  const [task, setTask] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [isStatusOpen, setIsStatusOpen] = useState(false);
+  // We need columns to move task
+  const [columns, setColumns] = useState<any[]>([]);
+  const [newSubtask, setNewSubtask] = useState("");
 
-  // Close dropdown when clicking outside (using overlay)
+  const fetchTask = useCallback(async () => {
+    if (!taskId) return;
+    try {
+      const data = await taskService.getTask(taskId);
+      setTask(mapTaskToUI(data));
 
-  const handleStatusChange = (newStatus: TaskNode["status"]) => {
-    if (taskId) {
-      updateTaskStatus(taskId, newStatus);
+      // Also fetch board to get columns for status changing
+      if (data.column?.boardId) {
+        const board = await boardService.getBoard(data.column.boardId);
+        setColumns(board.columns || []);
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Task not found"); // generic message
+      setLoading(false);
+    } finally {
+      setLoading(false);
+    }
+  }, [taskId]);
+
+  useEffect(() => {
+    fetchTask();
+  }, [fetchTask]);
+
+  const handleStatusChange = async (colId: string) => {
+    if (!task || !task.id) return;
+    try {
+      await taskService.updateTask(task.id, { columnId: colId });
+      fetchTask(); // Refresh
       setIsStatusOpen(false);
-      rerender();
+    } catch (e) {
+      console.error("Failed to update status", e);
     }
   };
 
-  const task = taskId ? getTask(taskId) : undefined;
+  const handleMarkComplete = async () => {
+    // Find "done" column
+    const doneCol = columns.find((c) => c.title.toLowerCase() === "done");
+    if (doneCol) {
+      handleStatusChange(doneCol.id);
+    } else {
+      alert("No 'Done' column found.");
+    }
+  };
 
-  if (!task) {
+  const handleCreateSubtask = async () => {
+    if (!newSubtask.trim() || !task) return;
+
+    // Find "todo" or first column
+    const defaultCol =
+      columns.find((c) => c.title.toLowerCase().includes("todo")) || columns[0];
+
+    if (!defaultCol) {
+      alert("Cannot create subtask: No column found.");
+      return;
+    }
+
+    try {
+      await taskService.createTask({
+        title: newSubtask,
+        columnId: defaultCol.id,
+        parentId: task.id,
+      });
+      setNewSubtask("");
+      fetchTask();
+    } catch (error) {
+      console.error("Failed to create subtask", error);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleCreateSubtask();
+  };
+
+  if (loading) return <div className="task-detail-page">Loading...</div>;
+
+  if (error || !task) {
     return (
       <div className="task-detail-page">
         <div className="td-action-bar">
@@ -61,59 +148,16 @@ const TaskDetail = () => {
     );
   }
 
-  const children = getChildren(task.id);
-  const completedCount = children.filter((c) => c.status === "done").length;
-  const progressPercent =
-    children.length > 0
-      ? Math.round((completedCount / children.length) * 100)
-      : 0;
-
-  const handleAddSubtask = () => {
-    if (!newSubtask.trim()) return;
-    addChild(task.id, newSubtask.trim());
-    setNewSubtask("");
-    rerender();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleAddSubtask();
-  };
-
-  const handleCycleStatus = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    cycleTaskStatus(id);
-    rerender();
-  };
-
-  // Build back link: go to parent task, or board if top-level
-  const goBack = () => {
-    if (task.parentId) {
-      navigate(`/tasks/${task.parentId}`);
-    } else {
-      navigate("/tasks");
-    }
-  };
-
-  const backLabel = task.parentId
-    ? `← Back to ${getTask(task.parentId)?.title || "Parent"}`
-    : "← Back to Board";
-
   return (
     <div className="task-detail-page">
       {/* Top action bar */}
       <div className="td-action-bar">
-        <button className="td-back-btn" onClick={goBack}>
-          {backLabel}
+        <button className="td-back-btn" onClick={() => navigate("/tasks")}>
+          ← Back to Board
         </button>
         <div className="td-actions-right">
-          <button
-            className="td-mark-complete"
-            onClick={() => {
-              cycleTaskStatus(task.id);
-              rerender();
-            }}
-          >
-            {task.status === "done" ? "↩ Reopen" : "✓ Mark Complete"}
+          <button className="td-mark-complete" onClick={handleMarkComplete}>
+            {task.status === "done" ? "✓ Completed" : "✓ Mark Complete"}
           </button>
           <button className="td-icon-btn">🔗</button>
           <button className="td-icon-btn">•••</button>
@@ -123,13 +167,13 @@ const TaskDetail = () => {
       {/* Breadcrumb */}
       <div className="td-breadcrumb">
         <span className="td-breadcrumb-icon">📁</span>
-        {task.breadcrumb.map((crumb, i) => (
+        {task.breadcrumb?.map((crumb: string, i: number) => (
           <span key={i}>
             <span className="td-breadcrumb-link">{crumb}</span>
             <span className="td-breadcrumb-sep"> / </span>
           </span>
         ))}
-        {task.tag && <span className="td-breadcrumb-tag">{task.tag}</span>}
+        <span className="td-breadcrumb-tag">{task.tag}</span>
       </div>
 
       {/* Title */}
@@ -139,95 +183,100 @@ const TaskDetail = () => {
         {/* Left: main content */}
         <div className="td-main">
           {/* Description */}
-          {task.description && (
+          {task.description ? (
             <div className="td-section">
               <h3 className="td-section-heading">
                 <span className="td-section-icon">📄</span> DESCRIPTION
               </h3>
               <p className="td-description-text">{task.description}</p>
-              {task.bullets && task.bullets.length > 0 && (
-                <ul className="td-bullets">
-                  {task.bullets.map((b, i) => (
-                    <li key={i}>{b}</li>
-                  ))}
-                </ul>
-              )}
+            </div>
+          ) : (
+            <div className="td-section">
+              <p className="td-description-placeholder">
+                No description provided.
+              </p>
             </div>
           )}
 
-          {/* Subtasks */}
+          {/* Subtasks - Placeholder for now */}
           <div className="td-section">
             <div className="td-subtasks-header">
               <h3 className="td-section-heading">
                 <span className="td-section-icon">📋</span> SUBTASKS
               </h3>
-              {children.length > 0 && (
+              {/* Not implemented backend */}
+              {task.subtasks && task.subtasks.length > 0 && (
                 <div className="td-subtask-progress-info">
                   <span className="td-progress-label">
-                    {progressPercent}% COMPLETE
+                    {Math.round(
+                      (task.subtasks.filter(
+                        (t: any) => t.column?.title?.toLowerCase() === "done",
+                      ).length /
+                        task.subtasks.length) *
+                        100,
+                    )}
+                    % COMPLETE
                   </span>
                   <div className="td-progress-track">
                     <div
                       className="td-progress-fill"
-                      style={{ width: `${progressPercent}%` }}
+                      style={{
+                        width: `${Math.round((task.subtasks.filter((t: any) => t.column?.title?.toLowerCase() === "done").length / task.subtasks.length) * 100)}%`,
+                      }}
                     ></div>
                   </div>
                 </div>
               )}
             </div>
+
             <div className="td-subtask-list">
-              {children.map((child: TaskNode) => {
-                const badge = STATUS_BADGE[child.status];
-                const hasChildren = child.childIds.length > 0;
-                return (
-                  <div
-                    className={`td-subtask-row ${child.status === "done" ? "completed" : ""}`}
-                    key={child.id}
-                    onClick={() => navigate(`/tasks/${child.id}`)}
-                  >
+              {task.subtasks &&
+                task.subtasks.map((child: any) => {
+                  const childStatus =
+                    child.column?.title?.toLowerCase().replace(" ", "-") ||
+                    "todo";
+                  const badge =
+                    STATUS_BADGE[childStatus] || STATUS_BADGE["todo"];
+
+                  return (
                     <div
-                      className={`td-subtask-check ${child.status === "done" ? "checked" : ""}`}
-                      onClick={(e) => handleCycleStatus(child.id, e)}
+                      className={`td-subtask-row ${childStatus === "done" ? "completed" : ""}`}
+                      key={child.id}
+                      onClick={() => navigate(`/tasks/${child.id}`)}
                     >
-                      {child.status === "done" && "✓"}
-                    </div>
-                    <div className="td-subtask-content">
-                      <span
-                        className={`td-subtask-title ${child.status === "done" ? "line-through" : ""}`}
+                      <div
+                        className={`td-subtask-check ${childStatus === "done" ? "checked" : ""}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Toggle logic would go here
+                        }}
                       >
-                        {child.title}
-                      </span>
-                      {hasChildren && (
-                        <span className="td-subtask-children-count">
-                          {child.childIds.length} subtask
-                          {child.childIds.length > 1 ? "s" : ""}
+                        {childStatus === "done" && "✓"}
+                      </div>
+                      <div className="td-subtask-content">
+                        <span
+                          className={`td-subtask-title ${childStatus === "done" ? "line-through" : ""}`}
+                        >
+                          {child.title}
                         </span>
-                      )}
-                    </div>
-                    <span
-                      className="td-subtask-badge"
-                      style={{ background: badge.bg, color: badge.color }}
-                      onClick={(e) => handleCycleStatus(child.id, e)}
-                    >
-                      {badge.label}
-                    </span>
-                    {child.flagColor && (
+                      </div>
                       <span
-                        className="td-subtask-flag"
-                        style={{ color: child.flagColor }}
+                        className="td-subtask-badge"
+                        style={{ background: badge.bg, color: badge.color }}
                       >
-                        🚩
+                        {badge.label}
                       </span>
-                    )}
-                    <span className="td-subtask-arrow">→</span>
-                  </div>
-                );
-              })}
-              {children.length === 0 && (
+                      <span className="td-subtask-arrow">→</span>
+                    </div>
+                  );
+                })}
+
+              {(!task.subtasks || task.subtasks.length === 0) && (
                 <div className="td-empty-subtasks">
                   No subtasks yet. Add one below to break this task down.
                 </div>
               )}
+
               <div className="td-subtask-add-row">
                 <span className="td-subtask-add-icon">+</span>
                 <input
@@ -241,35 +290,12 @@ const TaskDetail = () => {
                 {newSubtask.trim() && (
                   <button
                     className="td-subtask-add-btn"
-                    onClick={handleAddSubtask}
+                    onClick={handleCreateSubtask}
                   >
                     Add
                   </button>
                 )}
               </div>
-            </div>
-          </div>
-
-          {/* Activity */}
-          <div className="td-section">
-            <h3 className="td-section-heading">
-              <span className="td-section-icon">💬</span> ACTIVITY
-            </h3>
-            <div className="td-comment-row">
-              <div className="td-comment-avatar"></div>
-              <input
-                type="text"
-                className="td-comment-input"
-                placeholder="Ask a question or leave a note..."
-              />
-              <button className="td-comment-send">↑</button>
-            </div>
-            <div className="td-activity-entry">
-              <span className="td-activity-dot">•</span>
-              <span className="td-activity-text">
-                YOU UPDATED THE STATUS • 2H AGO
-              </span>
-              <span className="td-activity-link">Show History</span>
             </div>
           </div>
         </div>
@@ -286,125 +312,67 @@ const TaskDetail = () => {
                 >
                   <span
                     className="td-meta-dot"
-                    style={{ background: task.statusColor || "#6b7280" }}
+                    style={{ background: task.statusColor }}
                   ></span>
-                  {task.status === "done"
-                    ? "Done"
-                    : task.status === "in-progress"
-                      ? "In Progress"
-                      : task.status === "blocked"
-                        ? "Blocked"
-                        : "To Do"}
+                  {task.status.toUpperCase().replace("-", " ")}
                   <span className="td-meta-chevron">›</span>
                 </div>
 
                 {isStatusOpen && (
                   <div className="td-status-dropdown-menu">
-                    {[
-                      { value: "backlog", label: "Backlog", color: "#6b7280" },
-                      { value: "todo", label: "To Do", color: "#6b7280" },
-                      { value: "planned", label: "Planned", color: "#f59e0b" },
-                      {
-                        value: "in-progress",
-                        label: "In Progress",
-                        color: "#8b5cf6",
-                      },
-                      { value: "blocked", label: "Blocked", color: "#ef4444" },
-                      { value: "done", label: "Done", color: "#16a34a" },
-                    ].map((opt) => (
-                      <div
-                        key={opt.value}
-                        className="td-status-option"
-                        onClick={() =>
-                          handleStatusChange(opt.value as TaskNode["status"])
-                        }
-                      >
-                        <span
-                          className="td-status-option-dot"
-                          style={{ background: opt.color }}
-                        ></span>
-                        {opt.label}
-                      </div>
-                    ))}
+                    {columns.map((col) => {
+                      let color = "#6b7280";
+                      const lowerTitle = col.title.toLowerCase();
+                      if (lowerTitle.includes("todo")) color = "#6b7280";
+                      else if (lowerTitle.includes("progress"))
+                        color = "#8b5cf6";
+                      else if (lowerTitle.includes("done")) color = "#16a34a";
+                      else if (lowerTitle.includes("blocked"))
+                        color = "#ef4444";
+
+                      return (
+                        <div
+                          key={col.id}
+                          className="td-status-option"
+                          onClick={() => handleStatusChange(col.id)}
+                        >
+                          <span
+                            className="td-status-option-dot"
+                            style={{ background: color }}
+                          ></span>
+                          {col.title}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
             </div>
-            {task.assignee && (
-              <div className="td-meta-row">
-                <span className="td-meta-label">ASSIGNEE</span>
-                <span className="td-meta-value">
-                  <span className="td-meta-avatar"></span>
-                  {task.assignee}
-                </span>
-              </div>
-            )}
+
+            <div className="td-meta-row">
+              <span className="td-meta-label">ASSIGNEE</span>
+              <span className="td-meta-value">
+                <span className="td-meta-avatar"></span>
+                {task.assignee}
+              </span>
+            </div>
+
             {task.dueDate && (
               <div className="td-meta-row">
                 <span className="td-meta-label">DUE DATE</span>
                 <span className="td-meta-value">📅 {task.dueDate}</span>
               </div>
             )}
-            {task.priority && (
-              <div className="td-meta-row">
-                <span className="td-meta-label">PRIORITY</span>
-                <span className="td-meta-value">
-                  🚩 {task.priority} <span className="td-meta-chevron">›</span>
-                </span>
-              </div>
-            )}
-            {task.project && (
-              <div className="td-meta-row">
-                <span className="td-meta-label">PROJECT</span>
-                <span className="td-meta-value">{task.project}</span>
-              </div>
-            )}
-            {task.parentId && (
-              <div className="td-meta-row">
-                <span className="td-meta-label">PARENT TASK</span>
-                <span
-                  className="td-meta-value td-meta-link"
-                  onClick={() => navigate(`/tasks/${task.parentId}`)}
-                >
-                  {getTask(task.parentId)?.title || "Parent"}
-                  <span className="td-meta-chevron">↗</span>
-                </span>
-              </div>
-            )}
-            {(() => {
-              const rootId = getTopLevelTaskId(task.id);
-              const rootTask = getTask(rootId);
-              const goalId = rootTask?.goalId || task.goalId;
-              if (!goalId) return null;
-              const goal = getGoal(goalId);
-              if (!goal) return null;
-              const cat =
-                CATEGORY_CONFIG[goal.category as keyof typeof CATEGORY_CONFIG];
-              return (
-                <div className="td-meta-row">
-                  <span className="td-meta-label">GOAL</span>
-                  <span
-                    className="td-meta-value td-meta-link"
-                    onClick={() => navigate("/goals")}
-                  >
-                    <span
-                      className="td-goal-badge"
-                      style={{ background: cat?.bg, color: cat?.color }}
-                    >
-                      {cat?.label}
-                    </span>
-                    {goal.title}
-                    <span className="td-meta-chevron">↗</span>
-                  </span>
-                </div>
-              );
-            })()}
-            {task.created && (
-              <div className="td-meta-row">
-                <span className="td-meta-label">CREATED</span>
-                <span className="td-meta-value">{task.created}</span>
-              </div>
-            )}
+
+            <div className="td-meta-row">
+              <span className="td-meta-label">PRIORITY</span>
+              <span className="td-meta-value">🚩 {task.priority}</span>
+            </div>
+
+            <div className="td-meta-row">
+              <span className="td-meta-label">CREATED</span>
+              <span className="td-meta-value">{task.created}</span>
+            </div>
           </div>
         </div>
       </div>

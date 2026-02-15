@@ -1,76 +1,129 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import TasksBoardHeader from "./components/TasksBoardHeader";
 import QuickAddBar from "./components/QuickAddBar";
 import KanbanColumn from "./components/KanbanColumn";
-import { KANBAN_TASKS, KANBAN_COLUMNS } from "./mockData";
-import { add } from "./taskStore"; // Import add from taskStore
-import type { KanbanColumn as KanbanColType } from "./mockData";
+import {
+  boardService,
+} from "../../services/boardService";
+import { taskService } from "../../services/taskService";
 import type { KanbanTask, KanbanStatus } from "../../types";
 import "./Tasks.css";
 
+// Helper to map backend task to frontend KanbanTask
+const mapToKanbanTask = (task: any): KanbanTask => {
+  const priorityMap: Record<string, number> = {
+    urgent: 0,
+    high: 1,
+    medium: 2,
+    low: 3,
+  };
+
+  return {
+    id: task.id,
+    title: task.title,
+    category: "SCHOOL", // Default category for now
+    kanbanStatus:
+      (task.column?.title.toLowerCase().replace(" ", "-") as KanbanStatus) ||
+      "backlog",
+    numericPriority: priorityMap[task.priority?.toLowerCase()] ?? 3,
+    dueDateLabel: task.dueDate
+      ? new Date(task.dueDate).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        })
+      : "No date",
+    isUrgent: task.priority === "urgent",
+  };
+};
+
 const Tasks = () => {
   const navigate = useNavigate();
-  const [, forceUpdate] = useState(0);
-  const rerender = useCallback(() => forceUpdate((n) => n + 1), []);
+  const [columns, setColumns] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchBoard = useCallback(async () => {
+    try {
+      const boards = await boardService.getBoards();
+      if (boards.length > 0) {
+        setColumns(boards[0].columns);
+      } else {
+        // Create default board if none exists
+        const newBoard = await boardService.createBoard({ title: "My Board" });
+        setColumns(newBoard.columns);
+      }
+    } catch (error) {
+      console.error("Failed to fetch boards", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchBoard();
+  }, [fetchBoard]);
 
   const handleCardClick = (taskId: string) => {
     navigate(`/tasks/${taskId}`);
   };
 
-  const handleAddTask = (title: string, status: KanbanStatus = "backlog") => {
-    const newId = `kt-${Date.now()}`;
-    const newTask: KanbanTask = {
-      id: newId,
-      title,
-      category: "SCHOOL",
-      kanbanStatus: status,
-      numericPriority: 3,
-      dueDateLabel: "No date",
-      isUrgent: false,
-    };
-    // Add to the shared mutable arrays
-    KANBAN_TASKS.push(newTask);
-
-    // Sync to taskStore (global store for details)
-    add({
-      id: newId,
-      title,
-      status: status as any, // sync type
-      description: "",
-      breadcrumb: ["TASKS"],
-      childIds: [],
-      created: "Just now",
-      statusColor: "#6b7280",
-    });
-
-    // Update target column immutably for React to detect change
-    const targetCol = KANBAN_COLUMNS.find((c) => c.id === status);
-    if (targetCol) {
-      // Create a NEW array reference
-      targetCol.tasks = [...targetCol.tasks, newTask];
-      targetCol.count = targetCol.tasks.length;
+  const handleAddTask = async (title: string, columnId: string) => {
+    try {
+      await taskService.createTask({
+        title,
+        columnId,
+        priority: "medium", // Default
+      });
+      fetchBoard(); // Refresh board to see new task
+    } catch (error) {
+      console.error("Failed to create task", error);
     }
-    rerender();
   };
+
+  if (loading) {
+    return <div className="tasks-page">Loading...</div>;
+  }
 
   return (
     <div className="tasks-page">
       <TasksBoardHeader />
-      <QuickAddBar onAddTask={(title) => handleAddTask(title, "backlog")} />
+      <QuickAddBar
+        onAddTask={(title) => {
+          // Default to first column (usually backlog/todo)
+          if (columns.length > 0) {
+            handleAddTask(title, columns[0].id);
+          }
+        }}
+      />
       <div className="kanban-board">
-        {KANBAN_COLUMNS.map((col: KanbanColType) => (
-          <KanbanColumn
-            key={col.id}
-            id={col.id}
-            title={col.title}
-            count={col.count}
-            color={col.color}
-            tasks={col.tasks}
-            onCardClick={handleCardClick}
-            onAddTask={(title) => handleAddTask(title, col.id)}
-          />
-        ))}
+        {columns.map((col: any) => {
+          // Map tasks for this column
+          const kanbanTasks = col.tasks.map(mapToKanbanTask);
+
+          // Map column title to a color helper?
+          // Using hardcoded colors for now based on title matching
+          let color = "#6b7280";
+          const lowerTitle = col.title.toLowerCase();
+          if (lowerTitle.includes("todo") || lowerTitle.includes("backlog"))
+            color = "#6b7280";
+          else if (lowerTitle.includes("progress")) color = "#8b5cf6";
+          else if (lowerTitle.includes("done")) color = "#16a34a";
+          else if (lowerTitle.includes("blocked")) color = "#ef4444";
+          else if (lowerTitle.includes("planned")) color = "#f59e0b";
+
+          return (
+            <KanbanColumn
+              key={col.id}
+              id={col.id}
+              title={col.title}
+              count={col.tasks.length}
+              color={color}
+              tasks={kanbanTasks}
+              onCardClick={handleCardClick}
+              onAddTask={(title) => handleAddTask(title, col.id)}
+            />
+          );
+        })}
       </div>
     </div>
   );

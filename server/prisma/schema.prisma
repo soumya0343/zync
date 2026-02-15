@@ -73,4 +73,7 @@ model Task {
   goal        Goal?    @relation(fields: [goalId], references: [id])
   createdAt   DateTime @default(now())
   dueDate     DateTime?
+  parentId    String?
+  parent      Task?    @relation("Subtasks", fields: [parentId], references: [id])
+  subtasks    Task[]   @relation("Subtasks")
 }

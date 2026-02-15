@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { checkInService } from "../../services/checkInService";
 import "./DailyCheckIn.css";
 
 const MOODS = [
@@ -9,53 +10,6 @@ const MOODS = [
   { emoji: "😄", label: "Great" },
 ];
 
-// Mock history data
-const HISTORY = [
-  {
-    date: "Thu, Feb 12",
-    workLog:
-      "Finished Goals page implementation, linked tasks to goals, built create modal.",
-    hours: 6.5,
-    mood: 4,
-    reflections: "Great progress today! Need to test edge cases tomorrow.",
-    completed: true,
-  },
-  {
-    date: "Wed, Feb 11",
-    workLog:
-      "Implemented Task Detail page with recursive navigation and priority view.",
-    hours: 7,
-    mood: 3,
-    reflections: "The recursive navigation was tricky but works well now.",
-    completed: true,
-  },
-  {
-    date: "Tue, Feb 10",
-    workLog:
-      "Built the Kanban board with drag indicators and task detail drawer.",
-    hours: 5,
-    mood: 3,
-    reflections: "Need to improve the drawer animation smoothness.",
-    completed: true,
-  },
-  {
-    date: "Mon, Feb 9",
-    workLog: "Set up project structure, dashboard layout, and design system.",
-    hours: 4,
-    mood: 2,
-    reflections: "Slow start but the foundation is solid.",
-    completed: true,
-  },
-  {
-    date: "Sun, Feb 8",
-    workLog: "Researched design patterns and collected Figma references.",
-    hours: 2.5,
-    mood: 3,
-    reflections: "",
-    completed: true,
-  },
-];
-
 const DailyCheckIn = () => {
   const [workLog, setWorkLog] = useState("");
   const [hours, setHours] = useState(4.5);
@@ -63,18 +17,51 @@ const DailyCheckIn = () => {
   const [reflections, setReflections] = useState("");
   const [saved, setSaved] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [viewEntry, setViewEntry] = useState<(typeof HISTORY)[number] | null>(
-    null,
-  );
+  const [history, setHistory] = useState<any[]>([]);
+  const [viewEntry, setViewEntry] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchHistory = useCallback(async () => {
+    try {
+      const data = await checkInService.getCheckIns();
+      setHistory(data);
+    } catch (error) {
+      console.error("Failed to fetch check-ins", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
 
   const handleSaveDraft = () => {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+    // TODO: Implement save draft to API if supported
   };
 
-  const handleComplete = () => {
-    setSaved(true);
+  const handleComplete = async () => {
+    try {
+      await checkInService.createCheckIn({
+        content: workLog,
+        mood: MOODS[mood].label.toLowerCase(),
+        tags: [], // Add tags if UI supports it
+        isPublic: true,
+        date: new Date().toISOString(),
+      });
+      setSaved(true);
+      fetchHistory();
+      // Reset form
+      setWorkLog("");
+      setReflections("");
+    } catch (error) {
+      console.error("Failed to submit check-in", error);
+    }
   };
+
+  if (loading) return <div className="checkin-page">Loading...</div>;
 
   // Format date like "WEDNESDAY, OCT 24"
   const now = new Date();
@@ -334,37 +321,50 @@ const DailyCheckIn = () => {
             </div>
 
             <div className="history-list">
-              {HISTORY.map((entry, i) => (
-                <div
-                  className="history-entry"
-                  key={i}
-                  onClick={() => {
-                    setViewEntry(entry);
-                    setShowHistory(false);
-                  }}
-                >
-                  <div className="history-entry-top">
-                    <span className="history-entry-date">{entry.date}</span>
-                    <div className="history-entry-meta">
-                      <span className="history-entry-hours">
-                        ⏱ {entry.hours}h
-                      </span>
-                      <span className="history-entry-mood">
-                        {MOODS[entry.mood].emoji}
-                      </span>
-                      {entry.completed && (
+              {history.map((entry: any) => {
+                const moodIndex = MOODS.findIndex(
+                  (m) => m.label.toLowerCase() === entry.mood.toLowerCase(),
+                );
+                const safeMoodIndex = moodIndex >= 0 ? moodIndex : 2; // Default to 'Okay'
+                const displayDate = new Date(
+                  entry.createdAt,
+                ).toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                });
+
+                return (
+                  <div
+                    className="history-entry"
+                    key={entry.id}
+                    onClick={() => {
+                      setViewEntry({
+                        ...entry,
+                        date: displayDate,
+                        hours: 0, // Backend doesn't seem to have hours?
+                        mood: safeMoodIndex,
+                        workLog: entry.content || "",
+                        reflections: "", // Backend TODO
+                        completed: true,
+                      });
+                      setShowHistory(false);
+                    }}
+                  >
+                    <div className="history-entry-top">
+                      <span className="history-entry-date">{displayDate}</span>
+                      <div className="history-entry-meta">
+                        <span className="history-entry-hours">⏱ {0}h</span>
+                        <span className="history-entry-mood">
+                          {MOODS[safeMoodIndex].emoji}
+                        </span>
                         <span className="history-entry-badge">✓ Done</span>
-                      )}
+                      </div>
                     </div>
+                    <p className="history-entry-work">{entry.content}</p>
                   </div>
-                  <p className="history-entry-work">{entry.workLog}</p>
-                  {entry.reflections && (
-                    <p className="history-entry-reflection">
-                      💭 {entry.reflections}
-                    </p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="history-drawer-footer">
