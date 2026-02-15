@@ -33,23 +33,35 @@ node_modules/
 # Optional eslint cache
 .eslintcache
 
-# dotenv environment variables file
+# dotenv environment variables (all env files, any directory)
 .env
+.env.*
 .env.development.local
 .env.test.local
 .env.production.local
 .env.local
+!.env.example
 
-# Vite build output
-dist
-dist-ssr
+# Build output
+dist/
+dist-ssr/
 *.local
+client/dist/
+server/dist/
 
-# Editor directories and files
+# Prisma
+server/prisma/migrations/**/migration_lock.toml
+
+# Deployment / hosting
+.vercel
+.turbo
+
+# IDE and editors
 .vscode/*
 !.vscode/extensions.json
 .idea
-.DS_Store
+.cursor/
+.agents/
 *.suo
 *.ntvs*
 *.njsproj
@@ -57,6 +69,7 @@ dist-ssr
 *.sw?
 
 # OS generated files
+.DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
