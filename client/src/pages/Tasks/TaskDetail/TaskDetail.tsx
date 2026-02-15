@@ -349,7 +349,7 @@ const TaskDetail = () => {
             isOpen={isEditModalOpen}
             onClose={() => setIsEditModalOpen(false)}
             onSave={fetchTask}
-            task={{
+            taskToEdit={{
               ...task,
               dueDate: task.rawDueDate, // Pass raw date for editing
             }}

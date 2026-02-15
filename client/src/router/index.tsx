@@ -5,6 +5,7 @@ import Dashboard from "../pages/Dashboard";
 import Tasks from "../pages/Tasks";
 import TaskDetail from "../pages/Tasks/TaskDetail";
 import Goals from "../pages/Goals";
+import GoalDetail from "../pages/Goals/GoalDetail";
 import DailyCheckIn from "../pages/DailyCheckIn";
 import AuthLayout from "../pages/Auth/AuthLayout";
 import Login from "../pages/Auth/Login";
@@ -23,6 +24,7 @@ const router = createBrowserRouter([
           { path: "tasks", element: <Tasks /> },
           { path: "tasks/:taskId", element: <TaskDetail /> },
           { path: "goals", element: <Goals /> },
+          { path: "goals/:goalId", element: <GoalDetail /> },
           { path: "check-in", element: <DailyCheckIn /> },
         ],
       },

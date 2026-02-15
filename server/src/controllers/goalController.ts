@@ -13,13 +13,47 @@ export const getGoals = async (
     const goals = await prisma.goal.findMany({
       where: { userId },
       include: {
-        tasks: true, // Include tasks associated with the goal
+        tasks: {
+          include: { column: true },
+          orderBy: { order: "asc" },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
     res.json(goals);
   } catch (error) {
     res.status(500).json({ message: "Error fetching goals", error });
+  }
+};
+
+// Get a single goal by ID
+export const getGoal = async (
+  req: Request & { user?: { userId: string } },
+  res: Response,
+) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const goal = await prisma.goal.findFirst({
+      where: { id: id as string, userId },
+      include: {
+        tasks: {
+          include: { column: true }, // Include status/column info
+          orderBy: { order: "asc" },
+        },
+      },
+    });
+
+    if (!goal) {
+      return res.status(404).json({ message: "Goal not found" });
+    }
+
+    res.json(goal);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching goal", error });
   }
 };
 
@@ -36,10 +70,10 @@ export const createGoal = async (
 
     const goal = await prisma.goal.create({
       data: {
-        title,
-        description,
-        category,
-        dueDate: dueDate ? new Date(dueDate) : null,
+        title: title as string,
+        description: description as string,
+        category: category as string,
+        dueDate: dueDate ? new Date(dueDate as string) : null,
         userId,
       },
       include: { tasks: true },

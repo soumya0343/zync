@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { goalService } from "../../services/goalService";
+import type { Goal } from "../../types";
 import { CATEGORY_CONFIG } from "./goalData";
 import type { GoalCategory } from "./goalData";
 import "./Goals.css";
@@ -24,7 +26,7 @@ const Goals = () => {
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [showCreate, setShowCreate] = useState(false);
-  const [goals, setGoals] = useState<any[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchGoals = useCallback(async () => {
@@ -155,53 +157,69 @@ const Goals = () => {
             CATEGORY_CONFIG["short-term"];
           const isComplete = goal.progress >= 100;
           return (
-            <div className="goal-card" key={goal.id}>
-              <div className="goal-card-top">
-                <span
-                  className="goal-category-badge"
-                  style={{ background: cat.bg, color: cat.color }}
-                >
-                  {cat.label}
-                </span>
-                <button className="goal-card-menu">•••</button>
-              </div>
-
-              <h3 className="goal-card-title">{goal.title}</h3>
-              <p className="goal-card-desc">{goal.description}</p>
-
-              {/* Progress */}
-              <div className="goal-progress-section">
-                <div className="goal-progress-header">
-                  <span className="goal-progress-label">Progress</span>
+            <Link
+              to={`/goals/${goal.id}`}
+              key={goal.id}
+              className="goal-card-link"
+              style={{ textDecoration: "none", color: "inherit" }}
+            >
+              <div className="goal-card">
+                <div className="goal-card-top">
                   <span
-                    className={`goal-progress-value ${isComplete ? "complete" : ""}`}
+                    className="goal-category-badge"
+                    style={{ background: cat.bg, color: cat.color }}
                   >
-                    {goal.progress}%
+                    {cat.label}
                   </span>
+                  <button
+                    type="button"
+                    className="goal-card-menu"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  >
+                    •••
+                  </button>
                 </div>
-                <div className="goal-progress-track">
-                  <div
-                    className={`goal-progress-fill ${isComplete ? "complete" : "default"}`}
-                    style={{ width: `${goal.progress}%` }}
-                  />
-                </div>
-              </div>
 
-              {/* Footer */}
-              <div className="goal-card-footer">
-                <span className="goal-footer-item">
-                  <span className="goal-footer-icon">📋</span>
-                  {goal.tasks?.length || 0} Task
-                  {(goal.tasks?.length || 0) !== 1 ? "s" : ""}
-                </span>
-                {goal.dueDate && (
+                <h3 className="goal-card-title">{goal.title}</h3>
+                <p className="goal-card-desc">{goal.description}</p>
+
+                {/* Progress */}
+                <div className="goal-progress-section">
+                  <div className="goal-progress-header">
+                    <span className="goal-progress-label">Progress</span>
+                    <span
+                      className={`goal-progress-value ${isComplete ? "complete" : ""}`}
+                    >
+                      {goal.progress}%
+                    </span>
+                  </div>
+                  <div className="goal-progress-track">
+                    <div
+                      className={`goal-progress-fill ${isComplete ? "complete" : "default"}`}
+                      style={{ width: `${goal.progress}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="goal-card-footer">
+                  <span className="goal-footer-item">
+                    <span className="goal-footer-icon">📋</span>
+                    {goal.tasks?.length || 0} Task
+                    {(goal.tasks?.length || 0) !== 1 ? "s" : ""}
+                  </span>
+                {goal.targetDate && (
                   <span className="goal-footer-item">
                     <span className="goal-footer-icon">📅</span>
-                    {new Date(goal.dueDate).toLocaleDateString()}
+                    {new Date(goal.targetDate).toLocaleDateString()}
                   </span>
                 )}
+                </div>
               </div>
-            </div>
+            </Link>
           );
         })}
 

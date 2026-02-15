@@ -1,4 +1,5 @@
-import api from "./api"; // Assuming default axios instance
+import api from "./api";
+import { normalizeGoal } from "./goalService";
 import type { Task, Goal, TaskStatus } from "../types/index";
 
 export interface DashboardData {
@@ -48,23 +49,10 @@ export const dashboardService = {
       updatedAt: t.createdAt, // Fallback as backend lacks this field
     }));
 
-    // Map backend goals to frontend Goal interface
-    const activeGoals: Goal[] = data.activeGoals.map((g: any) => ({
-      id: g.id,
-      title: g.title,
-      description: g.description || "",
-      status:
-        g.progress >= 100
-          ? "completed"
-          : g.progress > 0
-            ? "on-track"
-            : "not-started",
-      progress: g.progress,
-      targetDate: g.dueDate || "",
-      category: g.category,
-      milestones: [], // Backend doesn't support milestones yet
-      createdAt: g.createdAt,
-    }));
+    // Use same goal normalizer as goalService so goal shape is consistent everywhere
+    const activeGoals: Goal[] = (data.activeGoals ?? []).map((g: Parameters<typeof normalizeGoal>[0]) =>
+      normalizeGoal(g),
+    );
 
     return {
       ...data,

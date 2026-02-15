@@ -1,5 +1,6 @@
 import type { Goal } from "../../../types";
 import "./DashboardComponents.css";
+import { Link } from "react-router-dom";
 
 interface GoalCardProps {
   goal: Goal;
@@ -37,44 +38,46 @@ const GoalCard = ({ goal }: GoalCardProps) => {
   const progressBarColor = goal.status === "completed" ? "#2ecc71" : "#1a1a1a";
 
   return (
-    <div className="goal-card">
-      <div className="goal-header">
-        <div className="goal-icon-box" style={{ background: bg }}>
-          <span>{icon}</span>
-        </div>
-        <div className="goal-meta">
-          {daysLeftText && (
-            <span className="goal-days-left">{daysLeftText}</span>
-          )}
-          <span className="goal-tag">{goal.category || "GOAL"}</span>
-        </div>
-      </div>
-      <div className="goal-content">
-        <h3>{goal.title}</h3>
-        <p>{goal.description || "No description"}</p>
-      </div>
-      <div className="goal-footer">
-        <div className="goal-progress">
-          <span className="progress-text">
-            <strong>{goal.progress}%</strong>
-          </span>
-          <div className="progress-bar-track">
-            <div
-              className="progress-bar-fill"
-              style={{
-                width: `${goal.progress}%`,
-                background: progressBarColor,
-              }}
-            ></div>
+    <Link to={`/goals/${goal.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+      <div className="goal-card">
+        <div className="goal-header">
+          <div className="goal-icon-box" style={{ background: bg }}>
+            <span>{icon}</span>
+          </div>
+          <div className="goal-meta">
+            {daysLeftText && (
+              <span className="goal-days-left">{daysLeftText}</span>
+            )}
+            <span className="goal-tag">{goal.category || "GOAL"}</span>
           </div>
         </div>
-        <span className={`goal-status status-${goal.status}`}>
-          {goal.status === "on-track"
-            ? "On Track"
-            : goal.status.replace("-", " ")}
-        </span>
+        <div className="goal-content">
+          <h3>{goal.title}</h3>
+          <p>{goal.description || "No description"}</p>
+        </div>
+        <div className="goal-footer">
+          <div className="goal-progress">
+            <span className="progress-text">
+              <strong>{goal.progress}%</strong>
+            </span>
+            <div className="progress-bar-track">
+              <div
+                className="progress-bar-fill"
+                style={{
+                  width: `${goal.progress}%`,
+                  background: progressBarColor,
+                }}
+              ></div>
+            </div>
+          </div>
+          <span className={`goal-status status-${goal.status}`}>
+            {goal.status === "on-track"
+              ? "On Track"
+              : goal.status.replace("-", " ")}
+          </span>
+        </div>
       </div>
-    </div>
+    </Link>
   );
 };
 

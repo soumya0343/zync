@@ -7,6 +7,7 @@ export interface CreateTaskDto {
   priority?: string;
   dueDate?: string;
   parentId?: string;
+  goalId?: string;
 }
 
 export interface UpdateTaskDto {
@@ -16,6 +17,8 @@ export interface UpdateTaskDto {
   dueDate?: string;
   columnId?: string;
   order?: number;
+  goalId?: string;
+  parentId?: string;
 }
 
 export const taskService = {

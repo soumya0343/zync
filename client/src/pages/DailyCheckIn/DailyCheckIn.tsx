@@ -95,7 +95,7 @@ const DailyCheckIn = () => {
           <div className="checkin-section">
             <h3 className="checkin-section-heading">
               <span className="checkin-section-icon">✅</span>
-              What did you work on today?
+              How was your day today?
             </h3>
             <div className="checkin-readonly-block">{viewEntry.workLog}</div>
           </div>
@@ -209,7 +209,7 @@ const DailyCheckIn = () => {
         <div className="checkin-section">
           <h3 className="checkin-section-heading">
             <span className="checkin-section-icon">✅</span>
-            What did you work on today?
+            How was your day today?
           </h3>
           <textarea
             className="checkin-textarea"

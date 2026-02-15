@@ -16,11 +16,15 @@ export interface Task {
   description: string;
   status: TaskStatus;
   priority: TaskPriority;
+  columnId?: string;
+  goalId?: string;
+  parentId?: string;
   assignee?: string;
   dueDate?: string;
   tags: string[];
   createdAt: string;
   updatedAt: string;
+  subtasks?: Task[];
 }
 
 export interface KanbanTask {
@@ -46,10 +50,13 @@ export interface Goal {
   description: string;
   status: GoalStatus;
   progress: number; // 0–100
+  /** Target/deadline date (ISO string). Normalized from API's dueDate everywhere. */
   targetDate: string;
   category?: string;
-  milestones: Milestone[];
+  milestones?: Milestone[];
   createdAt: string;
+  /** Only when goal is fetched with tasks (e.g. getGoal). Not set from getGoals(). */
+  tasks?: Task[];
 }
 
 export interface Milestone {
@@ -68,4 +75,17 @@ export interface DailyCheckIn {
   blockers: string[];
   plans: string[];
   notes?: string;
+}
+
+export interface Column {
+  id: string;
+  title: string;
+  order: number;
+  tasks: Task[];
+}
+
+export interface Board {
+  id: string;
+  title: string;
+  columns: Column[];
 }

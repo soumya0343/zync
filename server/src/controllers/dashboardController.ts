@@ -70,14 +70,20 @@ export const getDashboardData = async (
         new Date(t.dueDate) < tomorrow, // End of today
     ).length;
 
-    // 4. Active Goals
+    // 4. Active Goals (include tasks with column so frontend can compute progress from completed tasks)
     const activeGoals = await prisma.goal.findMany({
       where: {
         userId,
         progress: { lt: 100 },
       },
-      take: 3, // Limit to 3 for the widget
+      take: 3,
       orderBy: { dueDate: "asc" },
+      include: {
+        tasks: {
+          include: { column: true },
+          orderBy: { order: "asc" },
+        },
+      },
     });
 
     // 5. Productivity (Completed Tasks)

@@ -1,17 +1,24 @@
 import { useState, useEffect } from "react";
 import Modal from "./common/Modal";
 import { goalService } from "../services/goalService";
-import { taskService } from "../services/taskService";
+import {
+  taskService,
+  type CreateTaskDto,
+  type UpdateTaskDto,
+} from "../services/taskService";
 import { boardService } from "../services/boardService";
+import type { Task, Goal, TaskPriority, Board } from "../types";
 import "./TaskModal.css";
 
 interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: () => void;
+  onSave?: () => void;
   parentId?: string;
   type?: "task" | "subtask";
-  task?: any; // Task to edit
+  taskToEdit?: Task;
+  initialGoalId?: string;
+  initialParentId?: string;
 }
 
 const TaskModal = ({
@@ -20,33 +27,37 @@ const TaskModal = ({
   onSave,
   parentId,
   type = "task",
-  task,
+  taskToEdit,
+  initialGoalId,
 }: TaskModalProps) => {
   const [title, setTitle] = useState("");
+  const [, setStatus] = useState("todo");
   const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState("medium");
+  const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dueDate, setDueDate] = useState("");
-  const [goalId, setGoalId] = useState("");
+  const [goalId, setGoalId] = useState(initialGoalId || "");
   const [linkedTaskId, setLinkedTaskId] = useState("");
-  const [goals, setGoals] = useState<any[]>([]);
-  const [availableTasks, setAvailableTasks] = useState<any[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [availableTasks, setAvailableTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      if (task) {
+      if (taskToEdit) {
         // Edit mode
-        setTitle(task.title || "");
-        setDescription(task.description || "");
-        setPriority(task.priority || "medium");
+        setTitle(taskToEdit.title);
+        setDescription(taskToEdit.description || "");
+        setPriority(taskToEdit.priority || "medium");
         // format date yyyy-mm-dd
         setDueDate(
-          task.dueDate
-            ? new Date(task.dueDate).toISOString().split("T")[0]
+          taskToEdit.dueDate
+            ? new Date(taskToEdit.dueDate).toISOString().split("T")[0]
             : "",
         );
-        setGoalId(task.goalId || "");
-        setLinkedTaskId(task.parentId || "");
+        setGoalId(taskToEdit.goalId || initialGoalId || "");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setStatus(taskToEdit.status || (taskToEdit.columnId as any) || "todo");
+        setLinkedTaskId(taskToEdit?.id || ""); // Keep this line for edit mode
       } else {
         // Create mode
         setTitle("");
@@ -61,41 +72,34 @@ const TaskModal = ({
       goalService
         .getGoals()
         .then(setGoals)
-        .catch((err: any) => console.error("Failed to fetch goals", err));
+        .catch((err: unknown) => console.error("Failed to fetch goals", err));
 
       // Fetch tasks for linking (if this is a subtask)
       if (type === "subtask") {
         boardService
           .getBoards()
-          .then((boards: any[]) => {
-            const tasks: any[] = [];
+          .then((boards: Board[]) => {
+            const tasks: Task[] = [];
             boards.forEach((board) => {
-              board.columns.forEach((col: any) => {
+              board.columns.forEach((col) => {
                 if (col.tasks) {
                   tasks.push(...col.tasks);
                 }
               });
             });
-            // Filter out self if editing (though we are creating here)
-            // Filter out current parent if we want to change it?
-            // Just show all for now.
             setAvailableTasks(tasks);
           })
-          .catch((err: any) => console.error("Failed to fetch tasks", err));
+          .catch((err: unknown) => console.error("Failed to fetch tasks", err));
       }
     }
-  }, [isOpen, type, parentId, task]);
+  }, [isOpen, type, parentId, taskToEdit, initialGoalId]);
 
   const handleSubmit = async () => {
     if (!title.trim()) return;
 
     setLoading(true);
     try {
-      // We need a columnId. For new tasks, default to first column of first board.
-      // For subtasks, backend handles it if we pass parentId?
-      // Actually subtasks need columnId too usually, or inherit from parent.
-      // Let's fetch board to get default column.
-      const boards = await boardService.getBoards();
+      const boards = (await boardService.getBoards()) as Board[];
       if (!boards.length) throw new Error("No boards found");
 
       const defaultBoard = boards[0];
@@ -103,30 +107,38 @@ const TaskModal = ({
 
       if (!defaultColumn) throw new Error("No columns found");
 
-      const payload: any = {
-        title,
-        description,
-        priority,
-        dueDate: dueDate || undefined,
-        columnId: defaultColumn.id,
-        goalId: goalId || undefined,
-      };
-
-      if (type === "subtask" && parentId) {
-        payload.parentId = parentId;
-      }
-
-      // If user selected a different parent via "Linked Task"
-      if (linkedTaskId) {
-        payload.parentId = linkedTaskId;
-      }
-
-      if (task) {
-        await taskService.updateTask(task.id, payload);
+      if (taskToEdit) {
+        const payload: UpdateTaskDto = {
+          title,
+          description,
+          priority,
+          dueDate: dueDate || undefined,
+          goalId: goalId || undefined,
+          parentId:
+            linkedTaskId ||
+            (type === "subtask" && parentId ? parentId : undefined) ||
+            undefined,
+          columnId: taskToEdit.columnId || defaultColumn.id,
+        };
+        await taskService.updateTask(taskToEdit.id, payload);
       } else {
+        const payload: CreateTaskDto = {
+          title,
+          description,
+          priority,
+          dueDate: dueDate || undefined,
+          columnId:
+            defaultBoard.columns.find((c) => c.title.toLowerCase() === "todo")
+              ?.id || defaultColumn.id,
+          goalId: goalId || undefined,
+          parentId:
+            linkedTaskId ||
+            (type === "subtask" && parentId ? parentId : undefined) ||
+            undefined,
+        };
         await taskService.createTask(payload);
       }
-      onSave();
+      if (onSave) onSave();
       onClose();
     } catch (error) {
       console.error("Failed to save task", error);
@@ -140,7 +152,7 @@ const TaskModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title={
-        task
+        taskToEdit
           ? "Edit Task"
           : type === "subtask"
             ? "Create Subtask"
@@ -174,7 +186,7 @@ const TaskModal = ({
             Priority
             <select
               value={priority}
-              onChange={(e) => setPriority(e.target.value)}
+              onChange={(e) => setPriority(e.target.value as TaskPriority)}
             >
               <option value="urgent">🔴 Urgent</option>
               <option value="high">🟠 High</option>
@@ -231,7 +243,11 @@ const TaskModal = ({
             onClick={handleSubmit}
             disabled={!title.trim() || loading}
           >
-            {loading ? "Saving..." : task ? "Save Changes" : "Create Task"}
+            {loading
+              ? "Saving..."
+              : taskToEdit
+                ? "Save Changes"
+                : "Create Task"}
           </button>
         </div>
       </div>

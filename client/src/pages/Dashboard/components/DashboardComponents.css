@@ -152,6 +152,30 @@
   color: #00b894;
 }
 
+/* Status tags (Todo, In Progress, Done) on goal detail linked tasks */
+.task-tag.tag-status {
+  text-transform: capitalize;
+}
+.task-tag.status-todo {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+.task-tag.status-in-progress {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.task-tag.status-done {
+  background: #d1fae5;
+  color: #047857;
+}
+.task-tag.status-in-review,
+.task-tag.status-blocked,
+.task-tag.status-planned,
+.task-tag.status-backlog {
+  background: #fef3c7;
+  color: #b45309;
+}
+
 .task-time {
   display: flex;
   align-items: center;
