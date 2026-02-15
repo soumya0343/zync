@@ -47,8 +47,9 @@
 }
 
 .logo-icon {
-  font-size: 1.2rem;
-  color: #1a1a1a;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 .sidebar-logo h2 {

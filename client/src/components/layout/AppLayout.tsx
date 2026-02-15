@@ -13,7 +13,7 @@ const AppLayout = () => {
     <div className="app-layout">
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <span className="logo-icon">⚡</span>
+          <img src="/logo.svg" alt="Zync Logo" className="logo-icon" />
           <h2>Zync</h2>
         </div>
 

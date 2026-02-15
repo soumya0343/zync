@@ -34,6 +34,16 @@ const Signup = () => {
   return (
     <div>
       <div style={{ textAlign: "left", marginBottom: "2rem" }}>
+        <img
+          src="/logo.svg"
+          alt="Zync Logo"
+          style={{
+            width: "48px",
+            height: "48px",
+            marginBottom: "1.5rem",
+            display: "block",
+          }}
+        />
         <h2
           style={{
             fontSize: "1.75rem",

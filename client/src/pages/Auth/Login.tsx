@@ -33,6 +33,16 @@ const Login = () => {
   return (
     <div>
       <div style={{ textAlign: "left", marginBottom: "1.75rem" }}>
+        <img
+          src="/logo.svg"
+          alt="Zync Logo"
+          style={{
+            width: "48px",
+            height: "48px",
+            marginBottom: "1.5rem",
+            display: "block",
+          }}
+        />
         <h2
           style={{
             fontSize: "1.75rem",
@@ -131,13 +141,9 @@ const Login = () => {
           letterSpacing: "0.08em",
         }}
       >
-        <div
-          style={{ flex: 1, height: "1px", backgroundColor: "#e5e7eb" }}
-        />
+        <div style={{ flex: 1, height: "1px", backgroundColor: "#e5e7eb" }} />
         <span style={{ padding: "0 1rem" }}>OR CONTINUE WITH</span>
-        <div
-          style={{ flex: 1, height: "1px", backgroundColor: "#e5e7eb" }}
-        />
+        <div style={{ flex: 1, height: "1px", backgroundColor: "#e5e7eb" }} />
       </div>
 
       <div style={{ display: "flex", gap: "0.75rem" }}>
