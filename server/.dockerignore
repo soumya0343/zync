@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.env.*
+*.log
+*-firebase-adminsdk-*.json
+.git
+.gitignore
+README*
+.firebase
+firebase-debug.log
+firestore-debug.log

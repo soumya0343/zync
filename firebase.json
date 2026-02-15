@@ -1,16 +1,13 @@
 {
   "hosting": {
-    "public": "public",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
+    "public": "client/dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
+      { "source": "/api**", "run": { "serviceId": "zync-api", "region": "us-central1" } },
+      { "source": "**", "destination": "/index.html" }
     ]
+  },
+  "firestore": {
+    "indexes": "server/firestore.indexes.json"
   }
 }

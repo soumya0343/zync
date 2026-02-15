@@ -1,73 +1,63 @@
-# React + TypeScript + Vite
+# Zync
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Zync is a modern, full-stack productivity application designed to help you manage tasks, goals, and projects efficiently. Built with performance and user experience in mind, it features a responsive Kanban board, hierarchical task management, and goal tracking.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Kanban Board**: Visualize your workflow with a fully interactive Kanban board supporting drag-and-drop actions.
+- **Task Management**: Create, update, and organize tasks. Break complex tasks down into subtasks for better granularity.
+- **Goal Tracking**: Set high-level goals and link them to actionable tasks to measure progress.
+- **Responsive Design**: Customized sidebar and layout for a seamless experience across devices.
+- **Authentication**: Secure user authentication powered by Firebase.
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+- **Frontend**: React 19, TypeScript, Vite, Vanilla CSS
+- **Backend**: Node.js, Express
+- **Database & Auth**: Firebase / Firestore
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js (v18 or higher recommended)
+- npm
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Installation
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. Clone the repository.
+2. Install dependencies for both client and server:
+
+   ```bash
+   npm run install:all
+   ```
+
+   Alternatively, you can install them manually:
+
+   ```bash
+   cd client && npm install
+   cd ../server && npm install
+   ```
+
+### Configuration
+
+Ensure you have the necessary environment variables set up.
+Check `client/.env.example` for required frontend variables (e.g., Firebase config).
+
+### Running the App
+
+To run both the client and server concurrently in development mode:
+
+```bash
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- **Client**: http://localhost:5173
+- **Server**: http://localhost:3000 (or your configured port)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Scripts
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- **`npm run dev`**: Runs client and server concurrently.
+- **`npm run dev:client`**: Runs only the frontend.
+- **`npm run dev:server`**: Runs only the backend.
+- **`npm run install:all`**: Installs dependencies for both client and server.
