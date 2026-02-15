@@ -207,4 +207,22 @@
   flex: 1;
   overflow-y: auto;
   background: #fafafa;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-wrapper {
+  flex: 1;
+  /* Ensure content takes available space */
+}
+
+.app-footer {
+  padding: 1.5rem;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-top: auto;
+  /* Push to bottom if content is short */
+  border-top: 1px solid #f0f0f0;
 }

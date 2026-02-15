@@ -94,7 +94,10 @@ const AppLayout = () => {
       </aside>
 
       <main className="main-content">
-        <Outlet />
+        <div className="content-wrapper">
+          <Outlet />
+        </div>
+        <footer className="app-footer">Made with love ❤️ by Soumya</footer>
       </main>
     </div>
   );
