@@ -101,9 +101,49 @@ export const getTask = async (
     const task = taskToJson(snap);
     const colSnap = await columnsCol().doc(task.columnId).get();
     const boardId = colSnap.data()?.boardId;
-    task.column = { id: task.columnId, ...colSnap.data(), board: { id: boardId } };
-    task.parent = null;
-    task.subtasks = [];
+    const boardSnap = boardId ? await boardsCol().doc(boardId).get() : null;
+    const boardTitle = boardSnap?.exists ? boardSnap.data()?.title : null;
+    task.column = {
+      id: task.columnId,
+      ...colSnap.data(),
+      board: { id: boardId, title: boardTitle ?? "Board" },
+    };
+
+    // Build parent chain for breadcrumb hierarchy: task.parent = direct parent, .parent = grandparent, ...
+    const ancestors: { id: string; title: string }[] = [];
+    let currentParentId: string | null = task.parentId ?? null;
+    while (currentParentId) {
+      const parentSnap = await tasksCol().doc(currentParentId).get();
+      if (!parentSnap.exists) break;
+      const parentAllowed = await taskBelongsToUser(currentParentId, req.user?.userId ?? "");
+      if (!parentAllowed) break;
+      const parentData = parentSnap.data();
+      ancestors.push({ id: parentSnap.id, title: parentData?.title ?? "" });
+      currentParentId = parentData?.parentId ?? null;
+    }
+    // Chain so direct parent is task.parent (first in list), then grandparent, then root
+    let parentChain: any = null;
+    for (let i = ancestors.length - 1; i >= 0; i--) {
+      parentChain = { id: ancestors[i].id, title: ancestors[i].title, parent: parentChain };
+    }
+    task.parent = parentChain;
+
+    // Fetch subtasks (tasks where parentId === this task's id)
+    const userId = req.user?.userId ?? "";
+    const subtasksSnap = await tasksCol().where("parentId", "==", id).get();
+    const subtasks: any[] = [];
+    for (const subDoc of subtasksSnap.docs) {
+      const sub = taskToJson(subDoc);
+      const subColSnap = await columnsCol().doc(sub.columnId).get();
+      if (!subColSnap.exists) continue;
+      const subBoardId = subColSnap.data()?.boardId;
+      const subBoardSnap = await boardsCol().doc(subBoardId).get();
+      if (!subBoardSnap.exists || subBoardSnap.data()?.userId !== userId) continue;
+      sub.column = { id: sub.columnId, ...subColSnap.data(), board: { id: subBoardId } };
+      subtasks.push(sub);
+    }
+    task.subtasks = subtasks;
+
     res.json(task);
   } catch (error) {
     res.status(500).json({ message: "Error fetching task", error });

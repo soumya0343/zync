@@ -352,6 +352,7 @@ const TaskDetail = () => {
             onClose={() => setIsSubtaskModalOpen(false)}
             onSave={fetchTask}
             parentId={task.id}
+            parentColumnId={task.columnId}
             type="subtask"
           />
           <TaskModal

@@ -15,6 +15,8 @@ interface TaskModalProps {
   onClose: () => void;
   onSave?: () => void;
   parentId?: string;
+  /** When creating a subtask, use this column so the subtask starts in the same column as the parent */
+  parentColumnId?: string;
   type?: "task" | "subtask";
   taskToEdit?: Task;
   initialGoalId?: string;
@@ -26,6 +28,7 @@ const TaskModal = ({
   onClose,
   onSave,
   parentId,
+  parentColumnId,
   type = "task",
   taskToEdit,
   initialGoalId,
@@ -122,14 +125,17 @@ const TaskModal = ({
         };
         await taskService.updateTask(taskToEdit.id, payload);
       } else {
+        const columnIdForNewTask =
+          type === "subtask" && parentColumnId
+            ? parentColumnId
+            : defaultBoard.columns.find((c) => c.title.toLowerCase() === "todo")?.id ||
+              defaultColumn.id;
         const payload: CreateTaskDto = {
           title,
           description,
           priority,
           dueDate: dueDate || undefined,
-          columnId:
-            defaultBoard.columns.find((c) => c.title.toLowerCase() === "todo")
-              ?.id || defaultColumn.id,
+          columnId: columnIdForNewTask,
           goalId: goalId || undefined,
           parentId:
             linkedTaskId ||
