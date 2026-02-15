@@ -11,6 +11,13 @@ import "./lib/firebase";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// CORS origin must be a full origin (e.g. https://zync-steel.vercel.app), not just a hostname.
+function getCorsOrigin(): string {
+  const raw = process.env.FRONTEND_URL || "http://localhost:5173";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `https://${raw}`;
+}
+
 app.use((req, res, next) => {
   const start = Date.now();
   res.on("finish", () => {
@@ -21,7 +28,7 @@ app.use((req, res, next) => {
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: getCorsOrigin(),
     credentials: true,
   }),
 );

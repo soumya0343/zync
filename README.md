@@ -65,7 +65,7 @@ npm run dev
 
 1. **Vercel** (frontend): Add env vars — `VITE_API_URL` (Render API URL, no trailing slash), and all `VITE_FIREBASE_*` from Firebase Console → Project settings → Your apps.
 2. **Firebase**: Authentication → Settings → Authorized domains — add your Vercel domain (e.g. `*.vercel.app` or your custom domain).
-3. **Render** (API): Root directory `server`. Build command: `npm install && npm run build` (do **not** use `npx prisma generate` — the API uses Firestore). Env vars: `FRONTEND_URL` = your Vercel app URL (for CORS), `FIREBASE_SERVICE_ACCOUNT` = full service account JSON (single line).
+3. **Render** (API): Root directory `server`. Build command: `npm install && npm run build` (do **not** use `npx prisma generate` — the API uses Firestore). Env vars: `FRONTEND_URL` = your Vercel app URL including `https://` (e.g. `https://zync-steel.vercel.app`) for CORS; `FIREBASE_SERVICE_ACCOUNT` = full service account JSON (single line).
 4. **GitHub** (optional): Secrets `VITE_FIREBASE_*`, `VITE_API_URL`, `FIREBASE_SERVICE_ACCOUNT_ZYNC_2018A` for the PR build check and for deploying Firestore indexes on push to `master`.
 
 ## Scripts
