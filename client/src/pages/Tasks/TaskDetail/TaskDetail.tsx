@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { taskService } from "../../../services/taskService";
 import { boardService } from "../../../services/boardService";
+import TaskModal from "../../../components/TaskModal";
+import StatusSelect from "../../../components/common/StatusSelect";
 import "./TaskDetail.css";
 
 // Helper to map backend task to UI format
@@ -18,31 +20,43 @@ const mapTaskToUI = (task: any) => {
     done: "#16a34a",
   };
 
+  // Build breadcrumb hierarchy
+  const breadcrumb = [];
+  // 1. Board
+  breadcrumb.push({
+    label: task.column?.board?.title || "Board",
+    link: "/tasks",
+    type: "board",
+  });
+
+  // 2. Parents (recursive up to what we fetched)
+  // We fetched nested parents: task.parent.parent.parent...
+  const parents = [];
+  let current = task.parent;
+  while (current) {
+    parents.unshift({
+      label: current.title,
+      link: `/tasks/${current.id}`,
+      type: "task",
+    });
+    current = current.parent;
+  }
+  breadcrumb.push(...parents);
+
   return {
     ...task,
     status,
     priority,
     statusColor: colors[status] || "#6b7280",
-    breadcrumb: ["TASKS", task.column?.board?.title || "Board"],
+    breadcrumb, // Array of objects now
     tag: "TASK",
     assignee: "Me", // Hardcoded for now
+    rawDueDate: task.dueDate,
     dueDate: task.dueDate ? new Date(task.dueDate).toLocaleDateString() : null,
     created: new Date(task.createdAt).toLocaleDateString(),
     bullets: [],
     subtasks: task.subtasks || [],
   };
-};
-
-const STATUS_BADGE: Record<
-  string,
-  { bg: string; color: string; label: string }
-> = {
-  done: { bg: "#ecfdf5", color: "#16a34a", label: "DONE" },
-  "in-progress": { bg: "#fff4ed", color: "#ea580c", label: "IN PROGRESS" },
-  todo: { bg: "#f5f5f5", color: "#666", label: "TO DO" },
-  backlog: { bg: "#f3f4f6", color: "#4b5563", label: "BACKLOG" },
-  planned: { bg: "#fffbeb", color: "#d97706", label: "PLANNED" },
-  blocked: { bg: "#fef2f2", color: "#dc2626", label: "BLOCKED" },
 };
 
 const TaskDetail = () => {
@@ -51,10 +65,11 @@ const TaskDetail = () => {
   const [task, setTask] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isStatusOpen, setIsStatusOpen] = useState(false);
+
   // We need columns to move task
   const [columns, setColumns] = useState<any[]>([]);
-  const [newSubtask, setNewSubtask] = useState("");
+  const [isSubtaskModalOpen, setIsSubtaskModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const fetchTask = useCallback(async () => {
     if (!taskId) return;
@@ -85,7 +100,8 @@ const TaskDetail = () => {
     try {
       await taskService.updateTask(task.id, { columnId: colId });
       fetchTask(); // Refresh
-      setIsStatusOpen(false);
+      await taskService.updateTask(task.id, { columnId: colId });
+      fetchTask(); // Refresh
     } catch (e) {
       console.error("Failed to update status", e);
     }
@@ -101,34 +117,8 @@ const TaskDetail = () => {
     }
   };
 
-  const handleCreateSubtask = async () => {
-    if (!newSubtask.trim() || !task) return;
-
-    // Find "todo" or first column
-    const defaultCol =
-      columns.find((c) => c.title.toLowerCase().includes("todo")) || columns[0];
-
-    if (!defaultCol) {
-      alert("Cannot create subtask: No column found.");
-      return;
-    }
-
-    try {
-      await taskService.createTask({
-        title: newSubtask,
-        columnId: defaultCol.id,
-        parentId: task.id,
-      });
-      setNewSubtask("");
-      fetchTask();
-    } catch (error) {
-      console.error("Failed to create subtask", error);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleCreateSubtask();
-  };
+  // const handleCreateSubtask removed as we use modal now
+  // const handleKeyDown removed as we use modal now
 
   if (loading) return <div className="task-detail-page">Loading...</div>;
 
@@ -159,17 +149,30 @@ const TaskDetail = () => {
           <button className="td-mark-complete" onClick={handleMarkComplete}>
             {task.status === "done" ? "✓ Completed" : "✓ Mark Complete"}
           </button>
-          <button className="td-icon-btn">🔗</button>
-          <button className="td-icon-btn">•••</button>
+          <button
+            className="td-edit-btn"
+            onClick={() => setIsEditModalOpen(true)}
+          >
+            Edit
+          </button>
         </div>
       </div>
 
       {/* Breadcrumb */}
       <div className="td-breadcrumb">
         <span className="td-breadcrumb-icon">📁</span>
-        {task.breadcrumb?.map((crumb: string, i: number) => (
-          <span key={i}>
-            <span className="td-breadcrumb-link">{crumb}</span>
+        {task.breadcrumb?.map((crumb: any, i: number) => (
+          <span key={i} className="td-breadcrumb-item">
+            {crumb.link ? (
+              <span
+                className="td-breadcrumb-link clickable"
+                onClick={() => navigate(crumb.link)}
+              >
+                {crumb.label}
+              </span>
+            ) : (
+              <span className="td-breadcrumb-link">{crumb.label}</span>
+            )}
             <span className="td-breadcrumb-sep"> / </span>
           </span>
         ))}
@@ -235,8 +238,6 @@ const TaskDetail = () => {
                   const childStatus =
                     child.column?.title?.toLowerCase().replace(" ", "-") ||
                     "todo";
-                  const badge =
-                    STATUS_BADGE[childStatus] || STATUS_BADGE["todo"];
 
                   return (
                     <div
@@ -260,13 +261,17 @@ const TaskDetail = () => {
                           {child.title}
                         </span>
                       </div>
-                      <span
-                        className="td-subtask-badge"
-                        style={{ background: badge.bg, color: badge.color }}
-                      >
-                        {badge.label}
-                      </span>
-                      <span className="td-subtask-arrow">→</span>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <StatusSelect
+                          currentStatus={childStatus}
+                          columns={columns}
+                          onChange={(colId: string) => {
+                            taskService
+                              .updateTask(child.id, { columnId: colId })
+                              .then(fetchTask);
+                          }}
+                        />
+                      </div>
                     </div>
                   );
                 })}
@@ -278,23 +283,12 @@ const TaskDetail = () => {
               )}
 
               <div className="td-subtask-add-row">
-                <span className="td-subtask-add-icon">+</span>
-                <input
-                  type="text"
-                  className="td-subtask-add-input"
-                  placeholder="Add a subtask..."
-                  value={newSubtask}
-                  onChange={(e) => setNewSubtask(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                />
-                {newSubtask.trim() && (
-                  <button
-                    className="td-subtask-add-btn"
-                    onClick={handleCreateSubtask}
-                  >
-                    Add
-                  </button>
-                )}
+                <button
+                  className="td-subtask-add-btn-full"
+                  onClick={() => setIsSubtaskModalOpen(true)}
+                >
+                  + Add Subtask
+                </button>
               </div>
             </div>
           </div>
@@ -306,46 +300,11 @@ const TaskDetail = () => {
             <div className="td-meta-row">
               <span className="td-meta-label">STATUS</span>
               <div className="td-status-dropdown-container">
-                <div
-                  className="td-meta-value td-status-trigger"
-                  onClick={() => setIsStatusOpen(!isStatusOpen)}
-                >
-                  <span
-                    className="td-meta-dot"
-                    style={{ background: task.statusColor }}
-                  ></span>
-                  {task.status.toUpperCase().replace("-", " ")}
-                  <span className="td-meta-chevron">›</span>
-                </div>
-
-                {isStatusOpen && (
-                  <div className="td-status-dropdown-menu">
-                    {columns.map((col) => {
-                      let color = "#6b7280";
-                      const lowerTitle = col.title.toLowerCase();
-                      if (lowerTitle.includes("todo")) color = "#6b7280";
-                      else if (lowerTitle.includes("progress"))
-                        color = "#8b5cf6";
-                      else if (lowerTitle.includes("done")) color = "#16a34a";
-                      else if (lowerTitle.includes("blocked"))
-                        color = "#ef4444";
-
-                      return (
-                        <div
-                          key={col.id}
-                          className="td-status-option"
-                          onClick={() => handleStatusChange(col.id)}
-                        >
-                          <span
-                            className="td-status-option-dot"
-                            style={{ background: color }}
-                          ></span>
-                          {col.title}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                <StatusSelect
+                  currentStatus={task.status}
+                  columns={columns}
+                  onChange={handleStatusChange}
+                />
               </div>
             </div>
 
@@ -376,6 +335,27 @@ const TaskDetail = () => {
           </div>
         </div>
       </div>
+
+      {task && (
+        <>
+          <TaskModal
+            isOpen={isSubtaskModalOpen}
+            onClose={() => setIsSubtaskModalOpen(false)}
+            onSave={fetchTask}
+            parentId={task.id}
+            type="subtask"
+          />
+          <TaskModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            onSave={fetchTask}
+            task={{
+              ...task,
+              dueDate: task.rawDueDate, // Pass raw date for editing
+            }}
+          />
+        </>
+      )}
     </div>
   );
 };

@@ -1,0 +1,14 @@
+.td-breadcrumb-link.clickable {
+  cursor: pointer;
+  color: #4b5563; /* or your link color */
+}
+
+.td-breadcrumb-link.clickable:hover {
+  text-decoration: underline;
+  color: #111827;
+}
+
+.td-breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+}

@@ -11,6 +11,7 @@ interface CreateTaskBody {
   priority?: string;
   dueDate?: string;
   parentId?: string;
+  goalId?: string;
 }
 
 export const createTask = async (
@@ -18,8 +19,15 @@ export const createTask = async (
   res: Response,
 ) => {
   try {
-    const { title, columnId, description, priority, dueDate, parentId } =
-      req.body as CreateTaskBody;
+    const {
+      title,
+      columnId,
+      description,
+      priority,
+      dueDate,
+      parentId,
+      goalId,
+    } = req.body as CreateTaskBody;
 
     // Verify column belongs to a board owned by user
     const column = await prisma.column.findUnique({
@@ -49,6 +57,7 @@ export const createTask = async (
         dueDate: dueDate ? new Date(dueDate) : null,
         order: newOrder,
         parentId,
+        goalId,
       },
     });
 
@@ -75,6 +84,15 @@ export const getTask = async (
         column: {
           include: { board: true },
         },
+        parent: {
+          include: {
+            parent: {
+              include: {
+                parent: true, // Up to 3 levels deep should be enough for now
+              },
+            },
+          },
+        },
         subtasks: {
           include: { column: true },
           orderBy: { order: "asc" },
@@ -99,7 +117,8 @@ export const updateTask = async (
 ) => {
   try {
     const { id } = req.params;
-    const { title, description, priority, dueDate, columnId, order } = req.body;
+    const { title, description, priority, dueDate, columnId, order, goalId } =
+      req.body;
 
     if (typeof id !== "string") {
       return res.status(400).json({ message: "Invalid task ID" });
@@ -133,6 +152,7 @@ export const updateTask = async (
         dueDate: dueDate ? new Date(dueDate) : undefined,
         columnId,
         order,
+        goalId,
       },
     });
 

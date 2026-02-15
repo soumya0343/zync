@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Droppable } from "@hello-pangea/dnd";
 import type { KanbanTask } from "../../../types";
 import KanbanCard from "./KanbanCard";
 import "./TasksComponents.css";
@@ -14,6 +15,7 @@ interface KanbanColumnProps {
 }
 
 const KanbanColumn = ({
+  id,
   title,
   count,
   color,
@@ -50,40 +52,50 @@ const KanbanColumn = ({
         </span>
         <span className="kanban-column-title">{title}</span>
       </div>
-      <div className="kanban-column-body">
-        {tasks.map((task) => (
-          <KanbanCard
-            key={task.id}
-            task={task}
-            onClick={() => onCardClick?.(task.id)}
-          />
-        ))}
-
-        {isAdding ? (
-          <div className="kanban-add-input-wrapper">
-            <input
-              autoFocus
-              className="kanban-add-input"
-              placeholder="Task title..."
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onBlur={() => {
-                // Optional: submit on blur or cancel? Let's submit if non-empty
-                if (newTitle.trim()) handleAddSubmit();
-                else setIsAdding(false);
-              }}
-            />
-          </div>
-        ) : (
-          <button
-            className="kanban-add-task-btn"
-            onClick={() => setIsAdding(true)}
+      <Droppable droppableId={id}>
+        {(provided) => (
+          <div
+            className="kanban-column-body"
+            ref={provided.innerRef}
+            {...provided.droppableProps}
           >
-            + Add Task
-          </button>
+            {tasks.map((task, index) => (
+              <KanbanCard
+                key={task.id}
+                task={task}
+                index={index}
+                onClick={() => onCardClick?.(task.id)}
+              />
+            ))}
+            {provided.placeholder}
+
+            {isAdding ? (
+              <div className="kanban-add-input-wrapper">
+                <input
+                  autoFocus
+                  className="kanban-add-input"
+                  placeholder="Task title..."
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onBlur={() => {
+                    // Optional: submit on blur or cancel? Let's submit if non-empty
+                    if (newTitle.trim()) handleAddSubmit();
+                    else setIsAdding(false);
+                  }}
+                />
+              </div>
+            ) : (
+              <button
+                className="kanban-add-task-btn"
+                onClick={() => setIsAdding(true)}
+              >
+                + Add Task
+              </button>
+            )}
+          </div>
         )}
-      </div>
+      </Droppable>
     </div>
   );
 };

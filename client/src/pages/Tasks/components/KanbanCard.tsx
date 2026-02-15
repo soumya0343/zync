@@ -1,8 +1,10 @@
 import type { KanbanTask } from "../../../types";
+import { Draggable } from "@hello-pangea/dnd";
 import "./TasksComponents.css";
 
 interface KanbanCardProps {
   task: KanbanTask;
+  index: number;
   onClick?: () => void;
 }
 
@@ -19,41 +21,56 @@ const PRIORITY_COLORS: Record<number, string> = {
   3: "#adb5bd",
 };
 
-const KanbanCard = ({ task, onClick }: KanbanCardProps) => {
+const KanbanCard = ({ task, index, onClick }: KanbanCardProps) => {
   const catStyle = CATEGORY_COLORS[task.category] || CATEGORY_COLORS.WORK;
   const priColor = PRIORITY_COLORS[task.numericPriority] ?? "#adb5bd";
 
   return (
-    <div className="kanban-card" onClick={onClick}>
-      <div className="kanban-card-top">
-        <span
-          className="kanban-category-tag"
-          style={{ background: catStyle.bg, color: catStyle.color }}
+    <Draggable draggableId={task.id} index={index}>
+      {(provided) => (
+        <div
+          className="kanban-card"
+          onClick={onClick}
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          style={{
+            ...provided.draggableProps.style,
+          }}
         >
-          {task.category}
-        </span>
-      </div>
-      <h3 className="kanban-card-title">{task.title}</h3>
-      <div className="kanban-card-footer">
-        <span className={`kanban-card-date ${task.isUrgent ? "urgent" : ""}`}>
-          {task.isUrgent ? "🔴" : "📅"} {task.dueDateLabel || "No date"}
-        </span>
-        <span className="kanban-card-priority" style={{ color: priColor }}>
-          P{task.numericPriority}
-        </span>
-      </div>
-      {task.progressPercent !== undefined && (
-        <div className="kanban-progress-track">
-          <div
-            className="kanban-progress-fill"
-            style={{
-              width: `${task.progressPercent}%`,
-              background: task.progressColor || "#7c3aed",
-            }}
-          ></div>
+          <div className="kanban-card-top">
+            <span
+              className="kanban-category-tag"
+              style={{ background: catStyle.bg, color: catStyle.color }}
+            >
+              {task.category}
+            </span>
+          </div>
+          <h3 className="kanban-card-title">{task.title}</h3>
+          <div className="kanban-card-footer">
+            <span
+              className={`kanban-card-date ${task.isUrgent ? "urgent" : ""}`}
+            >
+              {task.isUrgent ? "🔴" : "📅"} {task.dueDateLabel || "No date"}
+            </span>
+            <span className="kanban-card-priority" style={{ color: priColor }}>
+              P{task.numericPriority}
+            </span>
+          </div>
+          {task.progressPercent !== undefined && (
+            <div className="kanban-progress-track">
+              <div
+                className="kanban-progress-fill"
+                style={{
+                  width: `${task.progressPercent}%`,
+                  background: task.progressColor || "#7c3aed",
+                }}
+              ></div>
+            </div>
+          )}
         </div>
       )}
-    </div>
+    </Draggable>
   );
 };
 

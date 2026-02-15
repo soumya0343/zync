@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import "./TasksComponents.css";
 
 interface QuickAddBarProps {
@@ -10,11 +10,12 @@ const QuickAddBar = ({ onAddTask }: QuickAddBarProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Listen for sidebar "New Task" button
-  useEffect(() => {
-    const handler = () => inputRef.current?.focus();
-    window.addEventListener("open-new-task", handler);
-    return () => window.removeEventListener("open-new-task", handler);
-  }, []);
+  // Listen for sidebar "New Task" button - REMOVED to use Modal instead
+  // useEffect(() => {
+  //   const handler = () => inputRef.current?.focus();
+  //   window.addEventListener("open-new-task", handler);
+  //   return () => window.removeEventListener("open-new-task", handler);
+  // }, []);
 
   const handleSubmit = () => {
     if (!value.trim()) return;

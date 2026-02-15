@@ -1,11 +1,11 @@
 import { useState, useCallback, useEffect } from "react";
+import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import { useNavigate } from "react-router-dom";
+import TaskModal from "../../components/TaskModal";
 import TasksBoardHeader from "./components/TasksBoardHeader";
 import QuickAddBar from "./components/QuickAddBar";
 import KanbanColumn from "./components/KanbanColumn";
-import {
-  boardService,
-} from "../../services/boardService";
+import { boardService } from "../../services/boardService";
 import { taskService } from "../../services/taskService";
 import type { KanbanTask, KanbanStatus } from "../../types";
 import "./Tasks.css";
@@ -22,7 +22,7 @@ const mapToKanbanTask = (task: any): KanbanTask => {
   return {
     id: task.id,
     title: task.title,
-    category: "SCHOOL", // Default category for now
+    category: task.column?.title?.toUpperCase() || "TASK",
     kanbanStatus:
       (task.column?.title.toLowerCase().replace(" ", "-") as KanbanStatus) ||
       "backlog",
@@ -41,6 +41,14 @@ const Tasks = () => {
   const navigate = useNavigate();
   const [columns, setColumns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+
+  // Listen for sidebar "New Task" button
+  useEffect(() => {
+    const handler = () => setIsTaskModalOpen(true);
+    window.addEventListener("open-new-task", handler);
+    return () => window.removeEventListener("open-new-task", handler);
+  }, []);
 
   const fetchBoard = useCallback(async () => {
     try {
@@ -80,6 +88,69 @@ const Tasks = () => {
     }
   };
 
+  const onDragEnd = async (result: DropResult) => {
+    const { source, destination, draggableId } = result;
+
+    // Dropped outside the list
+    if (!destination) {
+      return;
+    }
+
+    // Dropped in the same place
+    if (
+      source.droppableId === destination.droppableId &&
+      source.index === destination.index
+    ) {
+      return;
+    }
+
+    // Find source and destination columns
+    const sourceColIndex = columns.findIndex(
+      (c) => c.id === source.droppableId,
+    );
+    const destColIndex = columns.findIndex(
+      (c) => c.id === destination.droppableId,
+    );
+
+    if (sourceColIndex === -1 || destColIndex === -1) return;
+
+    const newColumns = [...columns];
+    const sourceCol = newColumns[sourceColIndex];
+    const destCol = newColumns[destColIndex];
+
+    const sourceTasks = [...sourceCol.tasks];
+    const destTasks =
+      source.droppableId === destination.droppableId
+        ? sourceTasks
+        : [...destCol.tasks];
+
+    // Remove from source
+    const [movedTask] = sourceTasks.splice(source.index, 1);
+
+    // Add to destination
+    destTasks.splice(destination.index, 0, movedTask);
+
+    // Update columns locally
+    newColumns[sourceColIndex] = { ...sourceCol, tasks: sourceTasks };
+    if (source.droppableId !== destination.droppableId) {
+      newColumns[destColIndex] = { ...destCol, tasks: destTasks };
+    }
+
+    setColumns(newColumns);
+
+    // Call API (Optimistic update)
+    try {
+      await taskService.updateTask(draggableId, {
+        columnId: destination.droppableId,
+        order: destination.index,
+      });
+      // Optionally reload board to sync if needed, but optimistic is better UX
+    } catch (error) {
+      console.error("Failed to move task", error);
+      fetchBoard(); // Revert on error
+    }
+  };
+
   if (loading) {
     return <div className="tasks-page">Loading...</div>;
   }
@@ -95,36 +166,44 @@ const Tasks = () => {
           }
         }}
       />
-      <div className="kanban-board">
-        {columns.map((col: any) => {
-          // Map tasks for this column
-          const kanbanTasks = col.tasks.map(mapToKanbanTask);
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className="kanban-board">
+          {columns.map((col: any) => {
+            // Map tasks for this column
+            const kanbanTasks = col.tasks.map(mapToKanbanTask);
 
-          // Map column title to a color helper?
-          // Using hardcoded colors for now based on title matching
-          let color = "#6b7280";
-          const lowerTitle = col.title.toLowerCase();
-          if (lowerTitle.includes("todo") || lowerTitle.includes("backlog"))
-            color = "#6b7280";
-          else if (lowerTitle.includes("progress")) color = "#8b5cf6";
-          else if (lowerTitle.includes("done")) color = "#16a34a";
-          else if (lowerTitle.includes("blocked")) color = "#ef4444";
-          else if (lowerTitle.includes("planned")) color = "#f59e0b";
+            // Map column title to a color helper?
+            // Using hardcoded colors for now based on title matching
+            let color = "#6b7280";
+            const lowerTitle = col.title.toLowerCase();
+            if (lowerTitle.includes("todo") || lowerTitle.includes("backlog"))
+              color = "#6b7280";
+            else if (lowerTitle.includes("progress")) color = "#8b5cf6";
+            else if (lowerTitle.includes("done")) color = "#16a34a";
+            else if (lowerTitle.includes("blocked")) color = "#ef4444";
+            else if (lowerTitle.includes("planned")) color = "#f59e0b";
 
-          return (
-            <KanbanColumn
-              key={col.id}
-              id={col.id}
-              title={col.title}
-              count={col.tasks.length}
-              color={color}
-              tasks={kanbanTasks}
-              onCardClick={handleCardClick}
-              onAddTask={(title) => handleAddTask(title, col.id)}
-            />
-          );
-        })}
-      </div>
+            return (
+              <KanbanColumn
+                key={col.id}
+                id={col.id}
+                title={col.title}
+                count={col.tasks.length}
+                color={color}
+                tasks={kanbanTasks}
+                onCardClick={handleCardClick}
+                onAddTask={(title) => handleAddTask(title, col.id)}
+              />
+            );
+          })}
+        </div>
+      </DragDropContext>
+
+      <TaskModal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        onSave={fetchBoard}
+      />
     </div>
   );
 };

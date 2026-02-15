@@ -2,7 +2,6 @@
   padding: 2rem;
   display: flex;
   flex-direction: column;
-  height: 100%;
   box-sizing: border-box;
-  overflow: hidden; /* Manage internal scrolling via kanban board */
+  /* overflow: hidden; Removed to allow page scrolling */
 }

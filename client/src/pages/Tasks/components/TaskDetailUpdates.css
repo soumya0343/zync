@@ -1,0 +1,33 @@
+.td-subtask-add-btn-full {
+  width: 100%;
+  padding: 0.75rem;
+  background: white;
+  border: 1px dashed #d1d5db;
+  border-radius: 6px;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.td-subtask-add-btn-full:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+/* Override StatusSelect for TaskDetail usage if needed */
+.td-status-dropdown-container .status-select-trigger {
+  background: transparent;
+  padding: 0;
+  border: none;
+}
+
+.td-status-dropdown-container .status-select-trigger:hover {
+  background: transparent;
+}
