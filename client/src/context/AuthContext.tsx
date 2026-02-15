@@ -16,6 +16,20 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const apiBase = import.meta.env.VITE_API_URL || "";
+
+const authFetch = (path: string, options: RequestInit = {}) => {
+  const url = `${apiBase}/api/auth${path}`;
+  return fetch(url, {
+    ...options,
+    credentials: apiBase ? "include" : "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -26,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch("/api/auth/me");
+        const res = await authFetch("/me");
         if (res.ok) {
           const data = await res.json();
           setUser(data.user);
@@ -43,9 +57,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const login = async (credentials: any) => {
-    const res = await fetch("/api/auth/login", {
+    const res = await authFetch("/login", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(credentials),
     });
     if (!res.ok) {
@@ -57,9 +70,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const register = async (userData: any) => {
-    const res = await fetch("/api/auth/register", {
+    const res = await authFetch("/register", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(userData),
     });
     if (!res.ok) {
@@ -72,7 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await authFetch("/logout", { method: "POST" });
     } catch (e) {
       console.error("Logout error", e);
     }
