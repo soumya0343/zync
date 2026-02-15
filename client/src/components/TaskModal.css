@@ -45,7 +45,7 @@
   margin-top: 1rem;
 }
 
-.btn-cancel {
+.task-modal-btn-cancel {
   padding: 0.5rem 1rem;
   background: white;
   border: 1px solid #d1d5db;
@@ -56,14 +56,14 @@
   transition: all 0.2s;
 }
 
-.btn-cancel:hover {
+.task-modal-btn-cancel:hover {
   background: #f9fafb;
 }
 
-.btn-primary {
+.task-modal-btn-primary {
   padding: 0.5rem 1rem;
-  background: #111827;
-  border: 1px solid #111827;
+  background: #000000;
+  border: 1px solid #000000;
   border-radius: 6px;
   color: white;
   font-weight: 500;
@@ -71,11 +71,11 @@
   transition: all 0.2s;
 }
 
-.btn-primary:hover {
-  background: #1f2937;
+.task-modal-btn-primary:hover {
+  background: #333333;
 }
 
-.btn-primary:disabled {
+.task-modal-btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

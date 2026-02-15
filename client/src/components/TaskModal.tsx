@@ -223,11 +223,11 @@ const TaskModal = ({
         )}
 
         <div className="modal-actions">
-          <button className="btn-cancel" onClick={onClose}>
+          <button className="task-modal-btn-cancel" onClick={onClose}>
             Cancel
           </button>
           <button
-            className="btn-primary"
+            className="task-modal-btn-primary"
             onClick={handleSubmit}
             disabled={!title.trim() || loading}
           >

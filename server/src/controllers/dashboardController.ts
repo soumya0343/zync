@@ -64,8 +64,10 @@ export const getDashboardData = async (
 
     const priorityTaskCount = tasks.filter(
       (t) =>
-        (t.priority === "urgent" || t.priority === "high") &&
-        !isDoneColumn(t.column.title),
+        !isDoneColumn(t.column.title) &&
+        t.dueDate &&
+        new Date(t.dueDate) >= today && // Start of today
+        new Date(t.dueDate) < tomorrow, // End of today
     ).length;
 
     // 4. Active Goals

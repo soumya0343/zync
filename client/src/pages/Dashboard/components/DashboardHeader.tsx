@@ -22,7 +22,7 @@ const DashboardHeader = ({
         </div>
         <h1>Good morning, {userName}</h1>
         <p className="subtitle">
-          You have {priorityTaskCount} priority tasks today.
+          You have {priorityTaskCount} tasks due today.
         </p>
       </div>
       <div className="header-actions">
