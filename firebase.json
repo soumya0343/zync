@@ -3,7 +3,7 @@
     "public": "client/dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
-      { "source": "/api**", "run": { "serviceId": "zync-api", "region": "us-central1" } },
+      { "source": "/api**", "run": { "serviceId": "zync-api", "region": "asia-south1" } },
       { "source": "**", "destination": "/index.html" }
     ]
   },
