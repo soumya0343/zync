@@ -26,7 +26,8 @@ export const createCheckIn = async (
   res: Response,
 ) => {
   try {
-    const { content, mood, tags, isPublic, date } = req.body;
+    const { content, mood, tags, isPublic, date, focusedHours, reflections } =
+      req.body;
     const userId = req.user?.userId;
 
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
@@ -35,6 +36,9 @@ export const createCheckIn = async (
       data: {
         content,
         mood,
+        focusedHours:
+          focusedHours != null ? Number(focusedHours) : undefined,
+        reflections: reflections ?? undefined,
         tags: tags || [],
         isPublic: isPublic || false,
         date: date ? new Date(date) : new Date(),
@@ -79,7 +83,8 @@ export const updateCheckIn = async (
 ) => {
   try {
     const { id } = req.params;
-    const { content, mood, tags, isPublic, date } = req.body;
+    const { content, mood, tags, isPublic, date, focusedHours, reflections } =
+      req.body;
     const userId = req.user?.userId;
 
     if (typeof id !== "string") {
@@ -97,11 +102,15 @@ export const updateCheckIn = async (
     const checkIn = await prisma.dailyCheckIn.update({
       where: { id },
       data: {
-        content,
-        mood,
-        tags,
-        isPublic,
-        date: date ? new Date(date) : undefined,
+        ...(content !== undefined && { content }),
+        ...(mood !== undefined && { mood }),
+        ...(tags !== undefined && { tags }),
+        ...(isPublic !== undefined && { isPublic }),
+        ...(date !== undefined && { date: new Date(date) }),
+        ...(focusedHours !== undefined && {
+          focusedHours: Number(focusedHours),
+        }),
+        ...(reflections !== undefined && { reflections }),
       },
     });
 

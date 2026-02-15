@@ -79,21 +79,6 @@ const AppLayout = () => {
           </NavLink>
         </nav>
 
-        <div className="sidebar-spaces">
-          <h3>SPACES</h3>
-          <ul>
-            <li>
-              <span className="dot"></span> University
-            </li>
-            <li>
-              <span className="dot"></span> Internship
-            </li>
-            <li>
-              <span className="dot"></span> Personal
-            </li>
-          </ul>
-        </div>
-
         <div className="sidebar-footer">
           <div className="user-profile">
             <div className="avatar"></div>

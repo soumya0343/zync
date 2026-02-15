@@ -19,15 +19,17 @@ model User {
 }
 
 model DailyCheckIn {
-  id        String   @id @default(uuid())
-  date      DateTime @default(now())
-  content   String   @db.Text
-  mood      String?
-  tags      String[]
-  isPublic  Boolean  @default(false)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  date          DateTime @default(now())
+  content       String   @db.Text
+  mood          String?
+  focusedHours  Float?   // hours of focused work
+  reflections   String?  @db.Text // reflections / blockers
+  tags          String[]
+  isPublic      Boolean  @default(false)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  updatedAt     DateTime @updatedAt
 }
 
 model Board {

@@ -65,6 +65,8 @@
   flex-direction: column;
   gap: 0.15rem;
   padding: 0.25rem 0.75rem;
+  flex: 1;
+  min-height: 0;
 }
 
 .nav-icon {

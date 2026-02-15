@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { checkInService } from "../../services/checkInService";
+import {
+  checkInService,
+  type CheckInEntry,
+} from "../../services/checkInService";
 import "./DailyCheckIn.css";
 
 const MOODS = [
@@ -17,9 +20,16 @@ const DailyCheckIn = () => {
   const [reflections, setReflections] = useState("");
   const [saved, setSaved] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [history, setHistory] = useState<any[]>([]);
-  const [viewEntry, setViewEntry] = useState<any>(null);
+  const [history, setHistory] = useState<CheckInEntry[]>([]);
+  const [viewEntry, setViewEntry] = useState<{
+    date: string;
+    workLog: string;
+    hours: number;
+    mood: number;
+    reflections: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hoursInput, setHoursInput] = useState("4.5");
 
   const fetchHistory = useCallback(async () => {
     try {
@@ -47,21 +57,57 @@ const DailyCheckIn = () => {
       await checkInService.createCheckIn({
         content: workLog,
         mood: MOODS[mood].label.toLowerCase(),
-        tags: [], // Add tags if UI supports it
+        focusedHours: hours,
+        reflections: reflections || undefined,
+        tags: [],
         isPublic: true,
         date: new Date().toISOString(),
       });
       setSaved(true);
       fetchHistory();
-      // Reset form
       setWorkLog("");
       setReflections("");
+      setHours(4.5);
+      setHoursInput("4.5");
     } catch (error) {
       console.error("Failed to submit check-in", error);
     }
   };
 
+  // Sync hours state with keyboard input; clamp to 0–12, step 0.5
+  const handleHoursInputChange = (value: string) => {
+    setHoursInput(value);
+    const num = parseFloat(value);
+    if (!Number.isNaN(num)) {
+      const clamped = Math.min(12, Math.max(0, num));
+      const stepped = Math.round(clamped * 2) / 2;
+      setHours(stepped);
+      if (value !== String(stepped)) setHoursInput(String(stepped));
+    }
+  };
+
   if (loading) return <div className="checkin-page">Loading...</div>;
+
+  // Compute streak (consecutive calendar days with a check-in from today backward) and avg hours
+  const today = new Date();
+  const toDateKey = (d: Date) =>
+    `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  const todayKey = toDateKey(today);
+  const uniqueDayKeys = Array.from(
+    new Set(history.map((e) => toDateKey(new Date(e.date)))),
+  ).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  let streakDays = 0;
+  if (uniqueDayKeys[0] === todayKey) {
+    for (let i = 0; i < uniqueDayKeys.length; i++) {
+      const expected = toDateKey(
+        new Date(today.getTime() - i * 24 * 60 * 60 * 1000),
+      );
+      if (uniqueDayKeys[i] !== expected) break;
+      streakDays++;
+    }
+  }
+  const totalHours = history.reduce((sum, e) => sum + (e.focusedHours ?? 0), 0);
+  const avgHours = history.length > 0 ? totalHours / history.length : 0;
 
   // Format date like "WEDNESDAY, OCT 24"
   const now = new Date();
@@ -107,7 +153,8 @@ const DailyCheckIn = () => {
                 <span className="checkin-section-icon">⏱</span>
                 Focused Hours
                 <span className="checkin-hours-badge">
-                  {viewEntry.hours} hrs
+                  <span>{viewEntry.hours}</span>
+                  <span>hrs</span>
                 </span>
               </h3>
               <div className="checkin-slider-wrap">
@@ -213,7 +260,7 @@ const DailyCheckIn = () => {
           </h3>
           <textarea
             className="checkin-textarea"
-            placeholder="Briefly describe your main tasks and achievements..."
+            placeholder="Briefly describe your day and what you did..."
             value={workLog}
             onChange={(e) => setWorkLog(e.target.value)}
             rows={4}
@@ -226,7 +273,20 @@ const DailyCheckIn = () => {
             <h3 className="checkin-section-heading">
               <span className="checkin-section-icon">⏱</span>
               Focused Hours
-              <span className="checkin-hours-badge">{hours} hrs</span>
+              <span className="checkin-hours-badge">
+                <input
+                  type="number"
+                  className="checkin-hours-badge-input"
+                  min={0}
+                  max={12}
+                  step={0.5}
+                  value={hoursInput}
+                  onChange={(e) => handleHoursInputChange(e.target.value)}
+                  onBlur={() => setHoursInput(String(hours))}
+                  aria-label="Focused hours"
+                />
+                hrs
+              </span>
             </h3>
             <div className="checkin-slider-wrap">
               <input
@@ -236,7 +296,11 @@ const DailyCheckIn = () => {
                 max={12}
                 step={0.5}
                 value={hours}
-                onChange={(e) => setHours(parseFloat(e.target.value))}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  setHours(v);
+                  setHoursInput(String(v));
+                }}
               />
               <div className="checkin-slider-labels">
                 <span>0H</span>
@@ -321,18 +385,22 @@ const DailyCheckIn = () => {
             </div>
 
             <div className="history-list">
-              {history.map((entry: any) => {
+              {history.map((entry) => {
                 const moodIndex = MOODS.findIndex(
-                  (m) => m.label.toLowerCase() === entry.mood.toLowerCase(),
+                  (m) =>
+                    m.label.toLowerCase() === (entry.mood ?? "").toLowerCase(),
                 );
-                const safeMoodIndex = moodIndex >= 0 ? moodIndex : 2; // Default to 'Okay'
-                const displayDate = new Date(
-                  entry.createdAt,
-                ).toLocaleDateString("en-US", {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                });
+                const safeMoodIndex = moodIndex >= 0 ? moodIndex : 2;
+                const displayDate = new Date(entry.date).toLocaleDateString(
+                  "en-US",
+                  {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  },
+                );
+                const entryHours =
+                  entry.focusedHours != null ? entry.focusedHours : 0;
 
                 return (
                   <div
@@ -340,13 +408,11 @@ const DailyCheckIn = () => {
                     key={entry.id}
                     onClick={() => {
                       setViewEntry({
-                        ...entry,
                         date: displayDate,
-                        hours: 0, // Backend doesn't seem to have hours?
+                        hours: entryHours,
                         mood: safeMoodIndex,
                         workLog: entry.content || "",
-                        reflections: "", // Backend TODO
-                        completed: true,
+                        reflections: entry.reflections || "",
                       });
                       setShowHistory(false);
                     }}
@@ -354,7 +420,9 @@ const DailyCheckIn = () => {
                     <div className="history-entry-top">
                       <span className="history-entry-date">{displayDate}</span>
                       <div className="history-entry-meta">
-                        <span className="history-entry-hours">⏱ {0}h</span>
+                        <span className="history-entry-hours">
+                          ⏱ {entryHours}h
+                        </span>
                         <span className="history-entry-mood">
                           {MOODS[safeMoodIndex].emoji}
                         </span>
@@ -368,8 +436,10 @@ const DailyCheckIn = () => {
             </div>
 
             <div className="history-drawer-footer">
-              <span className="history-streak">🔥 5-day streak</span>
-              <span className="history-avg">Avg: 5.0 hrs / day</span>
+              <span className="history-streak">🔥 {streakDays}-day streak</span>
+              <span className="history-avg">
+                Avg: {avgHours.toFixed(1)} hrs / day
+              </span>
             </div>
           </div>
         </div>

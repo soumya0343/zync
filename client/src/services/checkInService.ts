@@ -2,7 +2,9 @@ import api from "./api";
 
 export interface CreateCheckInDto {
   content: string;
-  mood: string; // "great" | "good" | "okay" | "bad"
+  mood: string;
+  focusedHours?: number;
+  reflections?: string;
   tags?: string[];
   isPublic?: boolean;
   date?: string;
@@ -11,9 +13,24 @@ export interface CreateCheckInDto {
 export interface UpdateCheckInDto {
   content?: string;
   mood?: string;
+  focusedHours?: number;
+  reflections?: string;
   tags?: string[];
   isPublic?: boolean;
   date?: string;
+}
+
+export interface CheckInEntry {
+  id: string;
+  date: string;
+  content: string;
+  mood: string | null;
+  focusedHours: number | null;
+  reflections: string | null;
+  tags: string[];
+  isPublic: boolean;
+  userId: string;
+  updatedAt: string;
 }
 
 export const checkInService = {

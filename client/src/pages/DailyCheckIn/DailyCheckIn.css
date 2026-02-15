@@ -139,7 +139,9 @@
 /* ─── Hours Slider ───────────────────────────────────────── */
 
 .checkin-hours-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
   background: #f5f5f5;
   border: 1px solid #e8e8e8;
   border-radius: 6px;
@@ -149,6 +151,33 @@
   color: #555;
   margin-left: 0.5rem;
   font-family: "SF Mono", "Consolas", monospace;
+}
+
+.checkin-hours-badge-input {
+  width: 2.25rem;
+  padding: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  font-family: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  -moz-appearance: textfield;
+}
+
+.checkin-hours-badge-input::-webkit-outer-spin-button,
+.checkin-hours-badge-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.checkin-hours-badge-input:focus {
+  outline: none;
+}
+
+.checkin-hours-badge:focus-within {
+  border-color: #1a1a1a;
+  box-shadow: 0 0 0 2px rgba(26, 26, 26, 0.1);
 }
 
 .checkin-slider-wrap {
