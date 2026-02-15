@@ -39,47 +39,41 @@ const GoalDetail = () => {
     todoId: null,
   });
 
-  /* eslint-disable react-hooks/exhaustive-deps */
-  const fetchGoal = async () => {
-    if (!goalId) return;
-    try {
-      setLoading(true);
-      const data = await goalService.getGoal(goalId);
-      setGoal(data);
-    } catch (err) {
-      setError("Failed to load goal details");
-      console.error(err);
-    } finally {
-      setLoading(false);
+  const extractColumnIds = (boards: Board[]) => {
+    let doneId: string | null = null;
+    let todoId: string | null = null;
+    for (const board of boards) {
+      const cols = board.columns || [];
+      const firstColId = cols[0]?.id ?? null;
+      for (const col of cols) {
+        const title = (col as Column).title?.toLowerCase() ?? "";
+        if (title === "done") doneId = (col as Column).id;
+        if (title === "todo" || title === "to do") todoId = (col as Column).id;
+      }
+      if (!todoId && firstColId) todoId = firstColId;
+      if (doneId && todoId) break;
     }
+    return { doneId, todoId };
+  };
+
+  const fetchGoal = () => {
+    if (!goalId) return;
+    setLoading(true);
+    Promise.all([goalService.getGoal(goalId), boardService.getBoards()])
+      .then(([goalData, boards]) => {
+        setGoal(goalData);
+        setColumnIds(extractColumnIds(boards));
+      })
+      .catch((err) => {
+        setError("Failed to load goal details");
+        console.error(err);
+      })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     fetchGoal();
   }, [goalId]);
-  /* eslint-enable react-hooks/exhaustive-deps */
-
-  useEffect(() => {
-    boardService
-      .getBoards()
-      .then((boards: Board[]) => {
-        let doneId: string | null = null;
-        let todoId: string | null = null;
-        for (const board of boards) {
-          const cols = board.columns || [];
-          const firstColId = cols[0]?.id ?? null;
-          for (const col of cols) {
-            const title = (col as Column).title?.toLowerCase() ?? "";
-            if (title === "done") doneId = (col as Column).id;
-            if (title === "todo" || title === "to do") todoId = (col as Column).id;
-          }
-          if (!todoId && firstColId) todoId = firstColId;
-          if (doneId && todoId) break;
-        }
-        setColumnIds({ doneId, todoId });
-      })
-      .catch(() => setColumnIds({ doneId: null, todoId: null }));
-  }, []);
 
   const handleTaskUpdate = () => {
     fetchGoal();

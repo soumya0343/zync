@@ -44,18 +44,15 @@ export const getDashboardData = async (
     }
 
     const columnIds: string[] = [];
+    const columnById: Record<string, any> = {};
     for (let i = 0; i < boardIds.length; i += 10) {
       const chunk = boardIds.slice(i, i + 10);
       const snap = await columnsCol().where("boardId", "in", chunk).get();
-      snap.docs.forEach((d) => columnIds.push(d.id));
+      snap.docs.forEach((d) => {
+        columnIds.push(d.id);
+        columnById[d.id] = d.data();
+      });
     }
-    const columnsSnap = await Promise.all(
-      columnIds.map((id) => columnsCol().doc(id).get()),
-    );
-    const columnById: Record<string, any> = {};
-    columnsSnap.forEach((d) => {
-      if (d.exists) columnById[d.id] = d.data();
-    });
     if (columnIds.length === 0) {
       return res.json({
         userName,
@@ -150,8 +147,7 @@ export const getDashboardData = async (
       const dt = d instanceof Date ? d : new Date(d);
       return dt > tomorrow && dt <= nextWeek;
     });
-    const goalsAll = await goalsCol().where("userId", "==", userId).get();
-    const upcomingGoals = goalsAll.docs
+    const upcomingGoals = goalsSnap.docs
       .map((doc) => ({
         id: doc.id,
         ...doc.data(),

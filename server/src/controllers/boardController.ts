@@ -31,30 +31,50 @@ function docToColumn(doc: DocumentSnapshot): any {
   };
 }
 
+function taskDocToJson(t: DocumentSnapshot) {
+  const td = t.data();
+  return {
+    id: t.id,
+    title: td?.title,
+    description: td?.description ?? null,
+    priority: td?.priority ?? "medium",
+    order: td?.order,
+    columnId: td?.columnId,
+    goalId: td?.goalId ?? null,
+    createdAt: timestampToDate(td?.createdAt as Timestamp)?.toISOString() ?? null,
+    dueDate: td?.dueDate ? timestampToDate(td.dueDate as Timestamp)?.toISOString() : null,
+    parentId: td?.parentId ?? null,
+  };
+}
+
 async function getColumnsForBoard(boardId: string) {
   const snap = await columnsCol().where("boardId", "==", boardId).get();
   const docsSorted = [...snap.docs].sort((a, b) => (a.data().order ?? 0) - (b.data().order ?? 0));
   const columns: any[] = [];
+  const colIds = docsSorted.map((d) => d.id);
+  if (colIds.length === 0) return columns;
+
+  const tasksCol = () => db.collection("tasks");
+  const allTaskDocs: import("firebase-admin/firestore").QueryDocumentSnapshot[] = [];
+  for (let i = 0; i < colIds.length; i += 10) {
+    const chunk = colIds.slice(i, i + 10);
+    const tasksSnap = await tasksCol().where("columnId", "in", chunk).get();
+    tasksSnap.docs.forEach((d) => allTaskDocs.push(d));
+  }
+  const tasksByColumnId: Record<string, typeof allTaskDocs> = {};
+  for (const colId of colIds) tasksByColumnId[colId] = [];
+  for (const t of allTaskDocs) {
+    const cid = t.data()?.columnId;
+    if (cid && tasksByColumnId[cid]) tasksByColumnId[cid].push(t);
+  }
+  for (const colId of colIds) {
+    tasksByColumnId[colId].sort((a, b) => (a.data()?.order ?? 0) - (b.data()?.order ?? 0));
+  }
+
   for (const doc of docsSorted) {
     const col = docToColumn(doc);
     if (col) {
-      const tasksSnap = await db.collection("tasks").where("columnId", "==", doc.id).get();
-      const taskDocsSorted = [...tasksSnap.docs].sort((a, b) => (a.data().order ?? 0) - (b.data().order ?? 0));
-      col.tasks = taskDocsSorted.map((t) => {
-        const td = t.data();
-        return {
-          id: t.id,
-          title: td.title,
-          description: td.description ?? null,
-          priority: td.priority ?? "medium",
-          order: td.order,
-          columnId: td.columnId,
-          goalId: td.goalId ?? null,
-          createdAt: timestampToDate(td.createdAt as Timestamp)?.toISOString() ?? null,
-          dueDate: td.dueDate ? timestampToDate(td.dueDate as Timestamp)?.toISOString() : null,
-          parentId: td.parentId ?? null,
-        };
-      });
+      col.tasks = (tasksByColumnId[doc.id] ?? []).map(taskDocToJson);
       columns.push(col);
     }
   }
@@ -68,15 +88,14 @@ export const getBoards = async (
   try {
     const userId = req.user?.userId;
     const snap = await boardsCol().where("userId", "==", userId).get();
-    const boards = [];
-    for (const doc of snap.docs) {
+    const boardDocs = snap.docs.filter((d) => docToBoard(d));
+    const columnsPerBoard = await Promise.all(boardDocs.map((doc) => getColumnsForBoard(doc.id)));
+    const boards = boardDocs.map((doc, i) => {
       const b = docToBoard(doc);
-      if (b) {
-        b.columns = await getColumnsForBoard(doc.id);
-        boards.push(b);
-      }
-    }
-    res.json(boards);
+      if (b) b.columns = columnsPerBoard[i];
+      return b;
+    });
+    res.json(boards.filter(Boolean));
   } catch (error: any) {
     if (error?.code === 5 || error?.message?.includes("NOT_FOUND")) {
       return res.json([]);

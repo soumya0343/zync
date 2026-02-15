@@ -27,6 +27,17 @@ function goalToJson(doc: DocumentSnapshot, includeTasks = false): any {
   return g;
 }
 
+function taskToGoalTaskJson(t: import("firebase-admin/firestore").QueryDocumentSnapshot) {
+  const td = t.data();
+  return {
+    id: t.id,
+    ...td,
+    createdAt: timestampToDate(td.createdAt as Timestamp)?.toISOString(),
+    dueDate: td.dueDate ? timestampToDate(td.dueDate as Timestamp)?.toISOString() : null,
+    column: { id: td.columnId },
+  };
+}
+
 export const getGoals = async (
   req: Request & { user?: { userId: string } },
   res: Response,
@@ -37,25 +48,30 @@ export const getGoals = async (
     const docsSorted = [...snap.docs].sort(
       (a, b) => (b.data().createdAt?.toMillis?.() ?? 0) - (a.data().createdAt?.toMillis?.() ?? 0),
     );
-    const goals = [];
-    for (const doc of docsSorted) {
+    const goalIds = docsSorted.map((d) => d.id);
+    type TaskDoc = import("firebase-admin/firestore").QueryDocumentSnapshot;
+    const tasksByGoalId: Record<string, TaskDoc[]> = {};
+    goalIds.forEach((id) => (tasksByGoalId[id] = []));
+    if (goalIds.length > 0) {
+      for (let i = 0; i < goalIds.length; i += 10) {
+        const chunk = goalIds.slice(i, i + 10);
+        const tasksSnap = await tasksCol().where("goalId", "in", chunk).get();
+        tasksSnap.docs.forEach((t) => {
+          const gid = t.data()?.goalId;
+          if (gid && tasksByGoalId[gid]) tasksByGoalId[gid].push(t);
+        });
+      }
+      goalIds.forEach((gid) => {
+        tasksByGoalId[gid].sort((a, b) => (a.data()?.order ?? 0) - (b.data()?.order ?? 0));
+      });
+    }
+    const goals = docsSorted.map((doc) => {
       const g = goalToJson(doc, true);
       if (g) {
-        const tasksSnap = await tasksCol().where("goalId", "==", doc.id).get();
-        const taskDocsSorted = [...tasksSnap.docs].sort((a, b) => (a.data().order ?? 0) - (b.data().order ?? 0));
-        g.tasks = taskDocsSorted.map((t) => {
-          const td = t.data();
-          return {
-            id: t.id,
-            ...td,
-            createdAt: timestampToDate(td.createdAt as Timestamp)?.toISOString(),
-            dueDate: td.dueDate ? timestampToDate(td.dueDate as Timestamp)?.toISOString() : null,
-            column: { id: td.columnId },
-          };
-        });
-        goals.push(g);
+        g.tasks = (tasksByGoalId[doc.id] ?? []).map(taskToGoalTaskJson);
       }
-    }
+      return g;
+    }).filter(Boolean);
     res.json(goals);
   } catch (error: any) {
     if (error?.code === 5 || error?.message?.includes("NOT_FOUND")) {

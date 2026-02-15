@@ -84,6 +84,35 @@ export const createTask = async (
   }
 };
 
+const BATCH_SIZE = 30;
+
+async function batchGetColumns(columnIds: string[]): Promise<Map<string, any>> {
+  const map = new Map<string, any>();
+  for (let i = 0; i < columnIds.length; i += BATCH_SIZE) {
+    const chunk = columnIds.slice(i, i + BATCH_SIZE);
+    const refs = chunk.map((cid) => columnsCol().doc(cid));
+    const snaps = await db.getAll(...refs);
+    snaps.forEach((snap, idx) => {
+      if (snap.exists) map.set(chunk[idx], { id: snap.id, ...snap.data() });
+    });
+  }
+  return map;
+}
+
+async function batchGetBoards(boardIds: string[]): Promise<Map<string, any>> {
+  const unique = [...new Set(boardIds)];
+  const map = new Map<string, any>();
+  for (let i = 0; i < unique.length; i += BATCH_SIZE) {
+    const chunk = unique.slice(i, i + BATCH_SIZE);
+    const refs = chunk.map((bid) => boardsCol().doc(bid));
+    const snaps = await db.getAll(...refs);
+    snaps.forEach((snap, idx) => {
+      if (snap.exists) map.set(chunk[idx], { id: snap.id, ...snap.data() });
+    });
+  }
+  return map;
+}
+
 export const getTask = async (
   req: Request & { user?: { userId: string } },
   res: Response,
@@ -91,55 +120,80 @@ export const getTask = async (
   try {
     const { id } = req.params;
     if (typeof id !== "string") return res.status(400).json({ message: "Invalid task ID" });
+    const userId = req.user?.userId ?? "";
 
-    const allowed = await taskBelongsToUser(id, req.user?.userId ?? "");
-    if (!allowed) return res.status(404).json({ message: "Task not found" });
-
-    const snap = await tasksCol().doc(id).get();
-    if (!snap.exists) return res.status(404).json({ message: "Task not found" });
-
-    const task = taskToJson(snap);
+    // 1. Fetch task, column, board once (no duplicate taskBelongsToUser + re-fetches)
+    const taskSnap = await tasksCol().doc(id).get();
+    if (!taskSnap.exists) return res.status(404).json({ message: "Task not found" });
+    const task = taskToJson(taskSnap);
     const colSnap = await columnsCol().doc(task.columnId).get();
-    const boardId = colSnap.data()?.boardId;
+    if (!colSnap.exists) return res.status(404).json({ message: "Task not found" });
+    const boardId = colSnap.data()?.boardId as string | undefined;
     const boardSnap = boardId ? await boardsCol().doc(boardId).get() : null;
-    const boardTitle = boardSnap?.exists ? boardSnap.data()?.title : null;
+    if (!boardSnap?.exists || boardSnap.data()?.userId !== userId)
+      return res.status(404).json({ message: "Task not found" });
+    const boardData = boardSnap.data();
+    const boardColsSnap = await columnsCol().where("boardId", "==", boardId).get();
+    const boardColumns = boardColsSnap.docs
+      .map((d) => ({ id: d.id, title: d.data()?.title, order: d.data()?.order, boardId }))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     task.column = {
       id: task.columnId,
       ...colSnap.data(),
-      board: { id: boardId, title: boardTitle ?? "Board" },
+      boardId,
+      board: { id: boardId, title: boardData?.title ?? "Board", columns: boardColumns },
     };
 
-    // Build parent chain for breadcrumb hierarchy: task.parent = direct parent, .parent = grandparent, ...
-    const ancestors: { id: string; title: string }[] = [];
+    // 3. Parent chain: sequential task reads (need each to get next parentId), then batch column/board
+    const ancestorTasks: { id: string; title: string; columnId: string }[] = [];
     let currentParentId: string | null = task.parentId ?? null;
     while (currentParentId) {
       const parentSnap = await tasksCol().doc(currentParentId).get();
       if (!parentSnap.exists) break;
-      const parentAllowed = await taskBelongsToUser(currentParentId, req.user?.userId ?? "");
-      if (!parentAllowed) break;
       const parentData = parentSnap.data();
-      ancestors.push({ id: parentSnap.id, title: parentData?.title ?? "" });
+      ancestorTasks.push({
+        id: parentSnap.id,
+        title: parentData?.title ?? "",
+        columnId: parentData?.columnId ?? "",
+      });
       currentParentId = parentData?.parentId ?? null;
     }
-    // Chain so direct parent is task.parent (first in list), then grandparent, then root
     let parentChain: any = null;
-    for (let i = ancestors.length - 1; i >= 0; i--) {
-      parentChain = { id: ancestors[i].id, title: ancestors[i].title, parent: parentChain };
+    if (ancestorTasks.length > 0) {
+      const ancColumnIds = [...new Set(ancestorTasks.map((a) => a.columnId).filter(Boolean))];
+      const colMap = await batchGetColumns(ancColumnIds);
+      const ancBoardIds = ancestorTasks.map((a) => colMap.get(a.columnId)?.boardId).filter(Boolean);
+      const boardMap = await batchGetBoards(ancBoardIds);
+      const allowedAncestors: { id: string; title: string }[] = [];
+      for (const a of ancestorTasks) {
+        const col = colMap.get(a.columnId);
+        const board = col ? boardMap.get(col.boardId) : null;
+        if (board?.userId === userId) allowedAncestors.push({ id: a.id, title: a.title });
+      }
+      for (let i = allowedAncestors.length - 1; i >= 0; i--) {
+        parentChain = {
+          id: allowedAncestors[i].id,
+          title: allowedAncestors[i].title,
+          parent: parentChain,
+        };
+      }
     }
     task.parent = parentChain;
 
-    // Fetch subtasks (tasks where parentId === this task's id)
-    const userId = req.user?.userId ?? "";
+    // 4. Subtasks: one query, then batch columns and boards
     const subtasksSnap = await tasksCol().where("parentId", "==", id).get();
+    const subtaskColumnIds = [...new Set(subtasksSnap.docs.map((d) => d.data()?.columnId).filter(Boolean))];
+    const subColMap = subtaskColumnIds.length > 0 ? await batchGetColumns(subtaskColumnIds) : new Map();
+    const subBoardIds = [...new Set([...subColMap.values()].map((c: any) => c.boardId).filter(Boolean))];
+    const subBoardMap = subBoardIds.length > 0 ? await batchGetBoards(subBoardIds) : new Map();
     const subtasks: any[] = [];
     for (const subDoc of subtasksSnap.docs) {
       const sub = taskToJson(subDoc);
-      const subColSnap = await columnsCol().doc(sub.columnId).get();
-      if (!subColSnap.exists) continue;
-      const subBoardId = subColSnap.data()?.boardId;
-      const subBoardSnap = await boardsCol().doc(subBoardId).get();
-      if (!subBoardSnap.exists || subBoardSnap.data()?.userId !== userId) continue;
-      sub.column = { id: sub.columnId, ...subColSnap.data(), board: { id: subBoardId } };
+      const subCol = subColMap.get(sub.columnId);
+      if (!subCol) continue;
+      const subBoard = subBoardMap.get(subCol.boardId);
+      if (!subBoard || subBoard.userId !== userId) continue;
+      sub.column = { id: sub.columnId, ...subCol, board: { id: subCol.boardId } };
       subtasks.push(sub);
     }
     task.subtasks = subtasks;

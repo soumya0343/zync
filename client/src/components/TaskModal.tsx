@@ -71,28 +71,25 @@ const TaskModal = ({
         setLinkedTaskId(parentId || "");
       }
 
-      // Fetch goals
-      goalService
-        .getGoals()
-        .then(setGoals)
-        .catch((err: unknown) => console.error("Failed to fetch goals", err));
-
-      // Fetch tasks for linking (if this is a subtask)
+      // Fetch goals and, for subtask, boards in parallel to open modal faster
       if (type === "subtask") {
-        boardService
-          .getBoards()
-          .then((boards: Board[]) => {
+        Promise.all([goalService.getGoals(), boardService.getBoards()])
+          .then(([goalsData, boards]: [Goal[], Board[]]) => {
+            setGoals(goalsData);
             const tasks: Task[] = [];
-            boards.forEach((board) => {
-              board.columns.forEach((col) => {
-                if (col.tasks) {
-                  tasks.push(...col.tasks);
-                }
+            boards.forEach((board: Board) => {
+              board.columns?.forEach((col) => {
+                if (col.tasks) tasks.push(...col.tasks);
               });
             });
             setAvailableTasks(tasks);
           })
-          .catch((err: unknown) => console.error("Failed to fetch tasks", err));
+          .catch((err: unknown) => console.error("Failed to fetch goals/tasks", err));
+      } else {
+        goalService
+          .getGoals()
+          .then(setGoals)
+          .catch((err: unknown) => console.error("Failed to fetch goals", err));
       }
     }
   }, [isOpen, type, parentId, taskToEdit, initialGoalId]);

@@ -78,11 +78,14 @@ const TaskDetail = () => {
     try {
       const data = await taskService.getTask(taskId);
       setTask(mapTaskToUI(data));
-
-      // Also fetch board to get columns for status changing
-      if (data.column?.boardId) {
+      // Use columns embedded in getTask response to avoid a second getBoard round-trip
+      if (data.column?.board?.columns?.length) {
+        setColumns(data.column.board.columns);
+      } else if (data.column?.boardId) {
         const board = await boardService.getBoard(data.column.boardId);
-        setColumns(board.columns || []);
+        setColumns(board?.columns ?? []);
+      } else {
+        setColumns([]);
       }
     } catch (err) {
       console.error(err);
@@ -100,8 +103,6 @@ const TaskDetail = () => {
   const handleStatusChange = async (colId: string) => {
     if (!task || !task.id) return;
     try {
-      await taskService.updateTask(task.id, { columnId: colId });
-      fetchTask(); // Refresh
       await taskService.updateTask(task.id, { columnId: colId });
       fetchTask(); // Refresh
     } catch (e) {
