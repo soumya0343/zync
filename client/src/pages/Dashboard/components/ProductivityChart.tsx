@@ -3,12 +3,17 @@ import "./DashboardComponents.css";
 interface ProductivityChartProps {
   completedCount: number;
   trend: number; // percentage
+  weeklyData: number[]; // Array of 7 days
 }
 
 const ProductivityChart = ({
   completedCount,
   trend,
+  weeklyData,
 }: ProductivityChartProps) => {
+  // Find max value to determine bar height percentages
+  const maxVal = Math.max(...weeklyData, 1); // Avoid division by zero
+
   return (
     <div className="widget-card productivity-widget">
       <div className="widget-header">
@@ -21,19 +26,26 @@ const ProductivityChart = ({
       </div>
 
       <div className="chart-placeholder">
-        {/* Simple CSS bar chart visualization */}
-        <div className="bar" style={{ height: "40%" }}></div>
-        <div className="bar" style={{ height: "60%" }}></div>
-        <div className="bar" style={{ height: "50%" }}></div>
-        <div className="bar active" style={{ height: "90%" }}></div>
-        <div className="bar" style={{ height: "30%" }}></div>
-        <div className="bar" style={{ height: "20%" }}></div>
-        <div className="bar" style={{ height: "10%" }}></div>
+        {weeklyData.map((val, index) => {
+          const heightPercentage = Math.round((val / maxVal) * 100);
+          // Highlight today (last bar)
+          const isActive = index === 6;
+          return (
+            <div
+              key={index}
+              className={`bar ${isActive ? "active" : ""}`}
+              style={{ height: `${heightPercentage}%`, minHeight: "4px" }}
+              title={`${val} tasks`}
+            ></div>
+          );
+        })}
       </div>
 
       <div className="trend-indicator">
-        <span className="trend-arrow">↗</span>
-        <span className="trend-value">{trend}% up</span>
+        <span className="trend-arrow">{trend >= 0 ? "↗" : "↘"}</span>
+        <span className="trend-value">
+          {Math.abs(trend)}% {trend >= 0 ? "up" : "down"}
+        </span>
         <span className="trend-context"> from last week</span>
       </div>
     </div>

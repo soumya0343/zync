@@ -5,47 +5,59 @@ interface GoalCardProps {
   goal: Goal;
 }
 
+const getCategoryDetails = (category?: string) => {
+  const normalized = category?.toLowerCase() || "";
+  if (normalized.includes("health") || normalized.includes("fitness"))
+    return { icon: "💪", bg: "#e74c3c" };
+  if (normalized.includes("study") || normalized.includes("book"))
+    return { icon: "📖", bg: "#3498db" };
+  if (normalized.includes("finance") || normalized.includes("money"))
+    return { icon: "💰", bg: "#f1c40f" };
+  if (normalized.includes("work") || normalized.includes("career"))
+    return { icon: "💼", bg: "#9b59b6" };
+  return { icon: "🎯", bg: "#2ecc71" }; // Default
+};
+
 const GoalCard = ({ goal }: GoalCardProps) => {
-  // Determine display values based on goal
-  const isBookGoal = goal.title.includes("Book");
+  const { icon, bg } = getCategoryDetails(goal.category);
 
-  const iconBg = isBookGoal ? "#1a1a1a" : "#2ecc71";
-  const iconEmoji = isBookGoal ? "📖" : "🎬";
-  const timeTag = isBookGoal ? "Q4" : "MONTHLY";
+  // Calculate days left
+  let daysLeftText = "";
+  if (goal.targetDate) {
+    const today = new Date();
+    const target = new Date(goal.targetDate);
+    const diffTime = target.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  const showDaysLeft = !isBookGoal;
+    if (diffDays < 0) daysLeftText = "Overdue";
+    else if (diffDays === 0) daysLeftText = "Due today";
+    else daysLeftText = `${diffDays} days left`;
+  }
 
-  // Progress display
-  const progressDisplay = isBookGoal ? (
-    <>
-      <strong>4</strong>/12
-    </>
-  ) : (
-    <>
-      <strong>$350</strong>/$500
-    </>
-  );
-
-  const progressBarColor = goal.status === "on-track" ? "#1a1a1a" : "#2ecc71";
+  const progressBarColor = goal.status === "completed" ? "#2ecc71" : "#1a1a1a";
 
   return (
     <div className="goal-card">
       <div className="goal-header">
-        <div className="goal-icon-box" style={{ background: iconBg }}>
-          <span>{iconEmoji}</span>
+        <div className="goal-icon-box" style={{ background: bg }}>
+          <span>{icon}</span>
         </div>
         <div className="goal-meta">
-          {showDaysLeft && <span className="goal-days-left">3 days left</span>}
-          <span className="goal-tag">{timeTag}</span>
+          {daysLeftText && (
+            <span className="goal-days-left">{daysLeftText}</span>
+          )}
+          <span className="goal-tag">{goal.category || "GOAL"}</span>
         </div>
       </div>
       <div className="goal-content">
         <h3>{goal.title}</h3>
-        <p>{goal.description}</p>
+        <p>{goal.description || "No description"}</p>
       </div>
       <div className="goal-footer">
         <div className="goal-progress">
-          <span className="progress-text">{progressDisplay}</span>
+          <span className="progress-text">
+            <strong>{goal.progress}%</strong>
+          </span>
           <div className="progress-bar-track">
             <div
               className="progress-bar-fill"
@@ -57,7 +69,9 @@ const GoalCard = ({ goal }: GoalCardProps) => {
           </div>
         </div>
         <span className={`goal-status status-${goal.status}`}>
-          {goal.status === "on-track" ? "On Track" : goal.status}
+          {goal.status === "on-track"
+            ? "On Track"
+            : goal.status.replace("-", " ")}
         </span>
       </div>
     </div>

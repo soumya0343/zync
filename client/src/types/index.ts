@@ -47,6 +47,7 @@ export interface Goal {
   status: GoalStatus;
   progress: number; // 0–100
   targetDate: string;
+  category?: string;
   milestones: Milestone[];
   createdAt: string;
 }

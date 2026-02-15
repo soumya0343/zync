@@ -22,12 +22,14 @@ import boardRoutes from "./routes/boardRoutes";
 import taskRoutes from "./routes/taskRoutes";
 import goalRoutes from "./routes/goalRoutes";
 import checkInRoutes from "./routes/checkInRoutes";
+import dashboardRoutes from "./routes/dashboardRoutes";
 
 app.use("/api/auth", authRoutes);
 app.use("/api/boards", boardRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/goals", goalRoutes);
 app.use("/api/checkins", checkInRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "Server is running" });

@@ -1,37 +1,72 @@
+import { useEffect, useState } from "react";
 import DashboardHeader from "./components/DashboardHeader";
 import TodaysFocus from "./components/TodaysFocus";
 import ActiveGoals from "./components/ActiveGoals";
 import ProductivityChart from "./components/ProductivityChart";
 import UpcomingEvents from "./components/UpcomingEvents";
 import QuoteWidget from "./components/QuoteWidget";
-import { MOCK_TASKS, MOCK_GOALS, MOCK_STATS, MOCK_EVENTS } from "./mockData";
+import {
+  dashboardService,
+  type DashboardData,
+} from "../../services/dashboardService";
 import "./Dashboard.css";
 
 const Dashboard = () => {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const dashboardData = await dashboardService.getDashboardData();
+        setData(dashboardData);
+      } catch (err) {
+        console.error("Failed to fetch dashboard data", err);
+        setError("Failed to load dashboard data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return <div className="dashboard-pageLoading">Loading dashboard...</div>;
+  }
+
+  if (error || !data) {
+    return (
+      <div className="dashboard-pageError">{error || "No data available"}</div>
+    );
+  }
+
   return (
     <div className="dashboard-page">
       <div className="dashboard-grid">
         {/* Left Main Column */}
         <div className="main-column">
           <DashboardHeader
-            userName="Alex"
-            date="Tuesday, Oct 24"
-            priorityTaskCount={4}
+            userName={data.userName}
+            date={data.date}
+            priorityTaskCount={data.priorityTaskCount}
           />
 
-          <TodaysFocus tasks={MOCK_TASKS} />
+          <TodaysFocus tasks={data.todaysTasks} />
 
-          <ActiveGoals goals={MOCK_GOALS} />
+          <ActiveGoals goals={data.activeGoals} />
         </div>
 
         {/* Right Widget Column */}
         <div className="widget-column">
           <ProductivityChart
-            completedCount={MOCK_STATS.tasksCompleted}
-            trend={MOCK_STATS.trend}
+            completedCount={data.productivity.completedCount}
+            trend={data.productivity.trend}
+            weeklyData={data.productivity.weeklyData}
           />
 
-          <UpcomingEvents events={MOCK_EVENTS} />
+          <UpcomingEvents events={data.events} />
 
           <QuoteWidget />
         </div>
