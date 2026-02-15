@@ -1,0 +1,12 @@
+# Render Blueprint: API uses Firestore (no Prisma). Do not run prisma generate.
+services:
+  - type: web
+    name: zync-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Add FRONTEND_URL and FIREBASE_SERVICE_ACCOUNT in Render dashboard
