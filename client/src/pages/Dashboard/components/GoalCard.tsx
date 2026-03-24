@@ -25,10 +25,12 @@ const GoalCard = ({ goal }: GoalCardProps) => {
   // Calculate days left
   let daysLeftText = "";
   if (goal.targetDate) {
-    const today = new Date();
-    const target = new Date(goal.targetDate);
-    const diffTime = target.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const istFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" });
+    const todayStr = istFmt.format(new Date());
+    const targetStr = istFmt.format(new Date(goal.targetDate));
+    const todayMidnight = new Date(todayStr);
+    const targetMidnight = new Date(targetStr);
+    const diffDays = Math.round((targetMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) daysLeftText = "Overdue";
     else if (diffDays === 0) daysLeftText = "Due today";

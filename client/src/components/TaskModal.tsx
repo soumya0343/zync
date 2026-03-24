@@ -55,7 +55,8 @@ const TaskModal = ({
         // format date yyyy-mm-dd
         if (taskToEdit.dueDate) {
           const d = new Date(taskToEdit.dueDate);
-          setDueDate(d.toISOString().slice(0, 10));
+          const istDateFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" });
+          setDueDate(istDateFmt.format(d));
           const fmt = new Intl.DateTimeFormat("en-CA", {
             timeZone: "Asia/Kolkata",
             hour: "2-digit",

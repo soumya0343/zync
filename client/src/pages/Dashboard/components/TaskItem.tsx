@@ -55,20 +55,19 @@ const TaskItem = ({ task, onClick, completed, onToggleComplete, statusLabel }: T
               🕒{" "}
               {(() => {
                 const date = new Date(task.dueDate);
-                const today = new Date();
-                const isToday =
-                  date.getDate() === today.getDate() &&
-                  date.getMonth() === today.getMonth() &&
-                  date.getFullYear() === today.getFullYear();
+                const istFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" });
+                const isToday = istFmt.format(date) === istFmt.format(new Date());
 
                 if (isToday) {
-                  return date.toLocaleTimeString([], {
+                  return date.toLocaleTimeString("en-IN", {
+                    timeZone: "Asia/Kolkata",
                     hour: "numeric",
                     minute: "2-digit",
                   });
                 }
 
-                return date.toLocaleDateString([], {
+                return date.toLocaleDateString("en-IN", {
+                  timeZone: "Asia/Kolkata",
                   month: "short",
                   day: "numeric",
                 });
