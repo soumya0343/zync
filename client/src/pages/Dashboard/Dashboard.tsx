@@ -60,7 +60,6 @@ const Dashboard = () => {
         <div className="main-column">
           <DashboardHeader
             userName={data.userName}
-            date={data.date}
             priorityTaskCount={data.priorityTaskCount}
           />
 
