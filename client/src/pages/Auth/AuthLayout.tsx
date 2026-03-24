@@ -1,5 +1,4 @@
 import { Outlet } from "react-router-dom";
-import { Zap } from "lucide-react";
 
 const AuthLayout = () => {
   return (
@@ -24,21 +23,11 @@ const AuthLayout = () => {
           marginBottom: "1.5rem",
         }}
       >
-        <div
-          style={{
-            width: "48px",
-            height: "48px",
-            backgroundColor: "#1a1a1a",
-            borderRadius: "10px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff",
-            marginBottom: "0.5rem",
-          }}
-        >
-          <Zap size={26} strokeWidth={2.5} />
-        </div>
+        <img
+          src="/logo.svg"
+          alt="Zync"
+          style={{ width: "48px", height: "48px", marginBottom: "0.5rem" }}
+        />
         <h1
           style={{
             fontSize: "1.75rem",
