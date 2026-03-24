@@ -62,12 +62,15 @@ const TaskItem = ({ task, onClick, completed, onToggleComplete, statusLabel }: T
                   date.getFullYear() === today.getFullYear();
 
                 if (isToday) {
-                  return "11:59 PM";
+                  return date.toLocaleTimeString([], {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  });
                 }
 
-                return date.toLocaleTimeString([], {
-                  hour: "numeric",
-                  minute: "2-digit",
+                return date.toLocaleDateString([], {
+                  month: "short",
+                  day: "numeric",
                 });
               })()}
             </span>

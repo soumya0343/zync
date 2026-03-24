@@ -7,12 +7,20 @@ interface DashboardHeaderProps {
   priorityTaskCount: number;
 }
 
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+};
+
 const DashboardHeader = ({
   userName,
   date,
   priorityTaskCount,
 }: DashboardHeaderProps) => {
   const navigate = useNavigate();
+  const greeting = getGreeting();
 
   return (
     <div className="dashboard-header">
@@ -20,7 +28,7 @@ const DashboardHeader = ({
         <div className="date-display">
           <span className="calendar-icon">📅</span> {date}
         </div>
-        <h1>Good morning, {userName}</h1>
+        <h1>{greeting}, {userName}</h1>
         <p className="subtitle">
           You have {priorityTaskCount} tasks due today.
         </p>

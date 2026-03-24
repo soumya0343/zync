@@ -396,53 +396,56 @@ const DailyCheckIn = () => {
                 />
               ) : (
                 history.map((entry) => {
-                const moodIndex = MOODS.findIndex(
-                  (m) =>
-                    m.label.toLowerCase() === (entry.mood ?? "").toLowerCase(),
-                );
-                const safeMoodIndex = moodIndex >= 0 ? moodIndex : 2;
-                const displayDate = new Date(entry.date).toLocaleDateString(
-                  "en-US",
-                  {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric",
-                  },
-                );
-                const entryHours =
-                  entry.focusedHours != null ? entry.focusedHours : 0;
+                  const moodIndex = MOODS.findIndex(
+                    (m) =>
+                      m.label.toLowerCase() ===
+                      (entry.mood ?? "").toLowerCase(),
+                  );
+                  const safeMoodIndex = moodIndex >= 0 ? moodIndex : 2;
+                  const displayDate = new Date(entry.date).toLocaleDateString(
+                    "en-US",
+                    {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                    },
+                  );
+                  const entryHours =
+                    entry.focusedHours != null ? entry.focusedHours : 0;
 
-                return (
-                  <div
-                    className="history-entry"
-                    key={entry.id}
-                    onClick={() => {
-                      setViewEntry({
-                        date: displayDate,
-                        hours: entryHours,
-                        mood: safeMoodIndex,
-                        workLog: entry.content || "",
-                        reflections: entry.reflections || "",
-                      });
-                      setShowHistory(false);
-                    }}
-                  >
-                    <div className="history-entry-top">
-                      <span className="history-entry-date">{displayDate}</span>
-                      <div className="history-entry-meta">
-                        <span className="history-entry-hours">
-                          ⏱ {entryHours}h
+                  return (
+                    <div
+                      className="history-entry"
+                      key={entry.id}
+                      onClick={() => {
+                        setViewEntry({
+                          date: displayDate,
+                          hours: entryHours,
+                          mood: safeMoodIndex,
+                          workLog: entry.content || "",
+                          reflections: entry.reflections || "",
+                        });
+                        setShowHistory(false);
+                      }}
+                    >
+                      <div className="history-entry-top">
+                        <span className="history-entry-date">
+                          {displayDate}
                         </span>
-                        <span className="history-entry-mood">
-                          {MOODS[safeMoodIndex].emoji}
-                        </span>
-                        <span className="history-entry-badge">✓ Done</span>
+                        <div className="history-entry-meta">
+                          <span className="history-entry-hours">
+                            ⏱ {entryHours}h
+                          </span>
+                          <span className="history-entry-mood">
+                            {MOODS[safeMoodIndex].emoji}
+                          </span>
+                          <span className="history-entry-badge">✓ Done</span>
+                        </div>
                       </div>
+                      <p className="history-entry-work">{entry.content}</p>
                     </div>
-                    <p className="history-entry-work">{entry.content}</p>
-                  </div>
-                );
-              })
+                  );
+                })
               )}
             </div>
 

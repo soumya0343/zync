@@ -38,6 +38,7 @@ const TaskModal = ({
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dueDate, setDueDate] = useState("");
+  const [dueTime, setDueTime] = useState(""); // HH:mm, empty = use default 23:59 when date is set
   const [goalId, setGoalId] = useState(initialGoalId || "");
   const [linkedTaskId, setLinkedTaskId] = useState("");
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -52,11 +53,26 @@ const TaskModal = ({
         setDescription(taskToEdit.description || "");
         setPriority(taskToEdit.priority || "medium");
         // format date yyyy-mm-dd
-        setDueDate(
-          taskToEdit.dueDate
-            ? new Date(taskToEdit.dueDate).toISOString().split("T")[0]
-            : "",
-        );
+        if (taskToEdit.dueDate) {
+          const d = new Date(taskToEdit.dueDate);
+          setDueDate(d.toISOString().slice(0, 10));
+          const fmt = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Asia/Kolkata",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          });
+          const parts = fmt.formatToParts(d);
+          const h = parts.find((p) => p.type === "hour")?.value ?? "23";
+          const min = parts.find((p) => p.type === "minute")?.value ?? "59";
+          const utcH = d.getUTCHours();
+          const utcM = d.getUTCMinutes();
+          const isMidnightUtc = utcH === 0 && utcM === 0;
+          setDueTime(isMidnightUtc ? "23:59" : `${h.padStart(2, "0")}:${min.padStart(2, "0")}`);
+        } else {
+          setDueDate("");
+          setDueTime("");
+        }
         setGoalId(taskToEdit.goalId || initialGoalId || "");
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setStatus(taskToEdit.status || (taskToEdit.columnId as any) || "todo");
@@ -67,6 +83,7 @@ const TaskModal = ({
         setDescription("");
         setPriority("medium");
         setDueDate("");
+        setDueTime("");
         setGoalId("");
         setLinkedTaskId(parentId || "");
       }
@@ -107,12 +124,29 @@ const TaskModal = ({
 
       if (!defaultColumn) throw new Error("No columns found");
 
+      // Due datetime: if time given use it as IST; if only date, default to 11:59 PM IST
+      const IST_OFFSET_MINUTES = 5 * 60 + 30; // UTC+5:30
+      const dueDatePayload = dueDate
+        ? (() => {
+            const [y, m, d] = dueDate.split("-").map(Number);
+            if (dueTime && /^\d{1,2}:\d{2}$/.test(dueTime.trim())) {
+              const [hh, mm] = dueTime.trim().split(":").map(Number);
+              const dt = new Date(Date.UTC(y, m - 1, d, hh, mm, 0, 0));
+              dt.setUTCMinutes(dt.getUTCMinutes() - IST_OFFSET_MINUTES);
+              return dt.toISOString();
+            }
+            // Default 11:59 PM IST: 23:59 IST = 18:29 UTC
+            const endOfDayIST = new Date(Date.UTC(y, m - 1, d, 18, 29, 59, 999));
+            return endOfDayIST.toISOString();
+          })()
+        : undefined;
+
       if (taskToEdit) {
         const payload: UpdateTaskDto = {
           title,
           description,
           priority,
-          dueDate: dueDate || undefined,
+          dueDate: dueDatePayload,
           goalId: goalId || undefined,
           parentId:
             linkedTaskId ||
@@ -131,7 +165,7 @@ const TaskModal = ({
           title,
           description,
           priority,
-          dueDate: dueDate || undefined,
+          dueDate: dueDatePayload,
           columnId: columnIdForNewTask,
           goalId: goalId || undefined,
           parentId:
@@ -203,7 +237,23 @@ const TaskModal = ({
             <input
               type="date"
               value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setDueDate(v);
+                if (v && !dueTime) setDueTime("23:59");
+                if (!v) setDueTime("");
+              }}
+              aria-label="Due date"
+            />
+          </label>
+
+          <label title="Default 11:59 PM IST">
+            Due Time (IST)
+            <input
+              type="time"
+              value={dueDate ? (dueTime || "23:59") : dueTime}
+              onChange={(e) => setDueTime(e.target.value)}
+              aria-label="Due time (default 11:59 PM IST)"
             />
           </label>
         </div>

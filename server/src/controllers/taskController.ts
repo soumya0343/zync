@@ -35,6 +35,8 @@ function taskToJson(doc: DocumentSnapshot): any {
     columnId: d.columnId,
     goalId: d.goalId ?? null,
     createdAt: timestampToDate(d.createdAt as Timestamp)?.toISOString() ?? null,
+    updatedAt: timestampToDate(d.updatedAt as Timestamp)?.toISOString() ?? null,
+    completedAt: timestampToDate(d.completedAt as Timestamp)?.toISOString() ?? null,
     dueDate: d.dueDate ? timestampToDate(d.dueDate as Timestamp)?.toISOString() : null,
     parentId: d.parentId ?? null,
   };
@@ -66,6 +68,7 @@ export const createTask = async (
     const maxOrder = existing.empty ? -1 : Math.max(...existing.docs.map((d) => d.data().order ?? 0));
     const newOrder = maxOrder + 1;
 
+    const now = dateToTimestamp(new Date());
     const ref = await tasksCol().add({
       title,
       columnId,
@@ -75,7 +78,8 @@ export const createTask = async (
       order: newOrder,
       parentId: parentId ?? null,
       goalId: goalId ?? null,
-      createdAt: dateToTimestamp(new Date()),
+      createdAt: now,
+      updatedAt: now,
     });
     const snap = await ref.get();
     res.status(201).json(taskToJson(snap));
@@ -221,7 +225,14 @@ export const updateTask = async (
     if (description !== undefined) update.description = description;
     if (priority !== undefined) update.priority = priority;
     if (dueDate !== undefined) update.dueDate = dueDate ? dateToTimestamp(dueDate) : null;
-    if (columnId !== undefined) update.columnId = columnId;
+    if (columnId !== undefined) {
+      update.columnId = columnId;
+      const colSnap = await columnsCol().doc(columnId).get();
+      const colTitle = (colSnap.data()?.title as string)?.toLowerCase() ?? "";
+      if (colTitle.includes("done") || colTitle.includes("complete")) {
+        update.completedAt = dateToTimestamp(new Date());
+      }
+    }
     if (order !== undefined) update.order = order;
     if (goalId !== undefined) update.goalId = goalId;
     if (Object.keys(update).length === 0) {
@@ -229,6 +240,8 @@ export const updateTask = async (
       return res.json(taskToJson(snap));
     }
 
+    const now = dateToTimestamp(new Date());
+    update.updatedAt = now;
     await tasksCol().doc(id).update(update);
     const snap = await tasksCol().doc(id).get();
     res.json(taskToJson(snap));
