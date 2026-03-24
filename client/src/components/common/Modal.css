@@ -84,3 +84,19 @@
     transform: translateY(0) scale(1);
   }
 }
+
+@media (max-width: 640px) {
+  .modal-content {
+    width: 95vw;
+    max-height: 90dvh;
+    border-radius: 16px;
+  }
+
+  .modal-header {
+    padding: 1rem;
+  }
+
+  .modal-body {
+    padding: 1rem;
+  }
+}

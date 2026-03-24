@@ -1,10 +1,17 @@
-import { PRIORITY_GROUPS } from "../mockData";
 import type { KanbanTask } from "../../../types";
 import "./TasksComponents.css";
 
 interface PriorityViewProps {
+  tasks: KanbanTask[];
   onCardClick?: (taskId: string) => void;
 }
+
+const PRIORITY_META: { priority: number; label: string; color: string }[] = [
+  { priority: 0, label: "Urgent", color: "#ef4444" },
+  { priority: 1, label: "High", color: "#f59e0b" },
+  { priority: 2, label: "Medium", color: "#8b5cf6" },
+  { priority: 3, label: "Low", color: "#6b7280" },
+];
 
 const STATUS_LABEL: Record<
   string,
@@ -30,7 +37,7 @@ const PriorityRow = ({
   task: KanbanTask;
   onClick?: () => void;
 }) => {
-  const catStyle = CATEGORY_COLORS[task.category] || CATEGORY_COLORS.WORK;
+  const catStyle = CATEGORY_COLORS[task.category] || { bg: "#f3f4f6", color: "#6b7280" };
   const statusInfo = STATUS_LABEL[task.kanbanStatus] || STATUS_LABEL.backlog;
 
   return (
@@ -52,7 +59,7 @@ const PriorityRow = ({
         >
           {statusInfo.label}
         </span>
-        <span className={`priority-row-date ${task.isUrgent ? "urgent" : ""}`}>
+        <span className={`priority-row-date${task.isUrgent ? " urgent" : ""}`}>
           {task.dueDateLabel || "—"}
         </span>
         {task.progressPercent !== undefined && (
@@ -71,36 +78,41 @@ const PriorityRow = ({
   );
 };
 
-const PriorityView = ({ onCardClick }: PriorityViewProps) => {
+const PriorityView = ({ tasks, onCardClick }: PriorityViewProps) => {
   return (
     <div className="priority-view">
-      {PRIORITY_GROUPS.map((group) => (
-        <div className="priority-group" key={group.priority}>
-          <div className="priority-group-header">
-            <span
-              className="priority-group-badge"
-              style={{ background: group.color }}
-            >
-              P{group.priority}
-            </span>
-            <span className="priority-group-label">{group.label}</span>
-            <span className="priority-group-count">{group.tasks.length}</span>
+      {PRIORITY_META.map((group) => {
+        const groupTasks = tasks.filter(
+          (t) => t.numericPriority === group.priority
+        );
+        return (
+          <div className="priority-group" key={group.priority}>
+            <div className="priority-group-header">
+              <span
+                className="priority-group-badge"
+                style={{ background: group.color }}
+              >
+                P{group.priority}
+              </span>
+              <span className="priority-group-label">{group.label}</span>
+              <span className="priority-group-count">{groupTasks.length}</span>
+            </div>
+            <div className="priority-group-list">
+              {groupTasks.length > 0 ? (
+                groupTasks.map((task) => (
+                  <PriorityRow
+                    key={task.id}
+                    task={task}
+                    onClick={() => onCardClick?.(task.id)}
+                  />
+                ))
+              ) : (
+                <div className="priority-empty">No tasks</div>
+              )}
+            </div>
           </div>
-          <div className="priority-group-list">
-            {group.tasks.length > 0 ? (
-              group.tasks.map((task) => (
-                <PriorityRow
-                  key={task.id}
-                  task={task}
-                  onClick={() => onCardClick?.(task.id)}
-                />
-              ))
-            ) : (
-              <div className="priority-empty">No tasks</div>
-            )}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

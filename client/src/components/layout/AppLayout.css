@@ -4,6 +4,12 @@
   overflow: hidden;
 }
 
+/* ─── Mobile Top Bar (hidden on desktop) ─────────────────── */
+
+.mobile-topbar {
+  display: none;
+}
+
 /* ─── Sidebar ────────────────────────────────────────────── */
 
 .sidebar {
@@ -14,6 +20,8 @@
   flex-direction: column;
   flex-shrink: 0;
   padding: 0;
+  transition: transform 0.25s ease;
+  z-index: 100;
 }
 
 .sidebar-new-task {
@@ -74,6 +82,11 @@
   width: 1.25rem;
   display: inline-flex;
   justify-content: center;
+  flex-shrink: 0;
+}
+
+.nav-label {
+  /* visible on desktop */
 }
 
 .nav-link {
@@ -100,52 +113,6 @@
   background: #1a1a1a;
   color: #ffffff;
   font-weight: 600;
-}
-
-/* ─── Sidebar Spaces ─────────────────────────────────────── */
-
-.sidebar-spaces {
-  padding: 1.25rem 1rem;
-  border-top: 1px solid #f0f0f0;
-  margin-top: auto;
-}
-
-.sidebar-spaces h3 {
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  color: #999;
-  margin-bottom: 0.75rem;
-  padding-left: 0.5rem;
-  letter-spacing: 0.08em;
-  font-weight: 600;
-}
-
-.sidebar-spaces ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.sidebar-spaces li {
-  display: flex;
-  align-items: center;
-  padding: 0.4rem 0.5rem;
-  color: #555;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: color 0.15s;
-}
-
-.sidebar-spaces li:hover {
-  color: #222;
-}
-
-.sidebar-spaces .dot {
-  width: 7px;
-  height: 7px;
-  background-color: #333;
-  border-radius: 50%;
-  margin-right: 0.65rem;
 }
 
 /* ─── Sidebar Footer ─────────────────────────────────────── */
@@ -180,6 +147,7 @@
   display: flex;
   align-items: center;
   gap: 0.65rem;
+  min-width: 0;
 }
 
 .user-profile .avatar {
@@ -187,6 +155,11 @@
   height: 32px;
   background: linear-gradient(135deg, #a8d8a8, #7bc77b);
   border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.user-profile .user-info {
+  min-width: 0;
 }
 
 .user-profile .user-info .name {
@@ -194,11 +167,17 @@
   font-weight: 600;
   color: #1a1a1a;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-profile .user-info .plan {
   font-size: 0.7rem;
   color: #999;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ─── Main Content ───────────────────────────────────────── */
@@ -207,4 +186,223 @@
   flex: 1;
   overflow-y: auto;
   background: #fafafa;
+  min-width: 0;
+}
+
+/* ─── Bottom Nav (hidden on desktop) ─────────────────────── */
+
+.bottom-nav {
+  display: none;
+}
+
+/* ─── Sidebar Backdrop ───────────────────────────────────── */
+
+.sidebar-backdrop {
+  display: none;
+}
+
+/* ─── Tablet (641px – 768px): icon-only sidebar ──────────── */
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 64px;
+  }
+
+  .sidebar-logo h2,
+  .nav-label,
+  .sidebar-new-task,
+  .user-profile .user-info,
+  .btn-logout {
+    display: none;
+  }
+
+  .sidebar-logo {
+    justify-content: center;
+    padding: 1.25rem 0;
+  }
+
+  .sidebar-nav {
+    padding: 0.25rem 0.5rem;
+    align-items: center;
+  }
+
+  .nav-link {
+    padding: 0.6rem;
+    justify-content: center;
+    gap: 0;
+    border-radius: 8px;
+    width: 44px;
+  }
+
+  .nav-icon {
+    width: auto;
+    font-size: 1rem;
+  }
+
+  .sidebar-footer {
+    justify-content: center;
+    padding: 1rem 0;
+  }
+
+  .user-profile .avatar {
+    display: block;
+  }
+}
+
+/* ─── Mobile (≤640px): hidden sidebar + top bar + bottom nav */
+
+@media (max-width: 640px) {
+  .app-layout {
+    flex-direction: column;
+    height: 100dvh;
+  }
+
+  /* Show mobile top bar */
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: #ffffff;
+    border-bottom: 1px solid #f0f0f0;
+    flex-shrink: 0;
+    z-index: 150;
+    position: sticky;
+    top: 0;
+  }
+
+  .mobile-topbar-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .mobile-topbar-logo h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1a1a1a;
+  }
+
+  .mobile-menu-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #333;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+  }
+
+  .mobile-menu-btn:hover {
+    background: #f5f5f5;
+  }
+
+  /* Sidebar as off-screen overlay */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    width: 260px;
+    z-index: 200;
+    transform: translateX(-100%);
+    box-shadow: none;
+  }
+
+  .sidebar--open {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+  }
+
+  /* Show sidebar labels when open on mobile */
+  .sidebar--open .sidebar-logo h2,
+  .sidebar--open .nav-label,
+  .sidebar--open .sidebar-new-task,
+  .sidebar--open .user-profile .user-info,
+  .sidebar--open .btn-logout {
+    display: block;
+  }
+
+  .sidebar--open .sidebar-logo {
+    justify-content: flex-start;
+    padding: 1.25rem 1.25rem;
+  }
+
+  .sidebar--open .sidebar-nav {
+    padding: 0.25rem 0.75rem;
+    align-items: stretch;
+  }
+
+  .sidebar--open .nav-link {
+    padding: 0.55rem 0.75rem;
+    justify-content: flex-start;
+    gap: 0.6rem;
+    width: auto;
+  }
+
+  .sidebar--open .nav-icon {
+    width: 1.25rem;
+    font-size: 0.85rem;
+  }
+
+  .sidebar--open .sidebar-footer {
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+  }
+
+  /* Backdrop */
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 190;
+  }
+
+  /* Main content fills remaining space above bottom nav */
+  .main-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 64px;
+  }
+
+  /* Show bottom nav */
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border-top: 1px solid #f0f0f0;
+    z-index: 150;
+    height: 60px;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .bottom-nav-link {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    color: #999;
+    text-decoration: none;
+    font-size: 0.6rem;
+    font-weight: 500;
+    transition: color 0.15s;
+  }
+
+  .bottom-nav-link:hover {
+    color: #333;
+  }
+
+  .bottom-nav-link.active {
+    color: #1a1a1a;
+    font-weight: 700;
+  }
 }

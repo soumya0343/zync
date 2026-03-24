@@ -48,12 +48,6 @@ const DailyCheckIn = () => {
     fetchHistory();
   }, [fetchHistory]);
 
-  const handleSaveDraft = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-    // TODO: Implement save draft to API if supported
-  };
-
   const handleComplete = async () => {
     try {
       await checkInService.createCheckIn({
@@ -360,9 +354,6 @@ const DailyCheckIn = () => {
           </span>
         </div>
         <div className="checkin-footer-actions">
-          <button className="checkin-btn-draft" onClick={handleSaveDraft}>
-            Save Draft
-          </button>
           <button className="checkin-btn-complete" onClick={handleComplete}>
             Complete Check-In →
           </button>

@@ -198,6 +198,60 @@
   }
 }
 
+@media (max-width: 768px) {
+  .goals-page {
+    padding: 1.25rem 1.5rem;
+  }
+
+  .goals-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .goals-header-right {
+    flex-wrap: wrap;
+  }
+
+  .goals-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .goals-search {
+    width: 100%;
+  }
+
+  .goals-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+}
+
+@media (max-width: 640px) {
+  .goals-page {
+    padding: 1rem;
+  }
+
+  .goals-header-left h1 {
+    font-size: 1.4rem;
+  }
+
+  .goal-modal {
+    width: 95vw;
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+
+  .goal-form-row {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
 /* ─── Goal Card ──────────────────────────────────────────── */
 
 .goal-card {

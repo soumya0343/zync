@@ -1,6 +1,7 @@
+import { useState, useEffect } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { LogOut } from "lucide-react";
+import { LogOut, Menu, X, LayoutDashboard, CheckSquare, Flag, BookOpen } from "lucide-react";
 import "./AppLayout.css";
 
 const AppLayout = () => {
@@ -8,10 +9,40 @@ const AppLayout = () => {
   const location = useLocation();
   const isTasksPage = location.pathname.startsWith("/tasks");
   const isGoalsPage = location.pathname.startsWith("/goals");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  const handleNavClick = () => {
+    setSidebarOpen(false);
+  };
 
   return (
     <div className="app-layout">
-      <aside className="sidebar">
+      {/* Mobile top bar */}
+      <header className="mobile-topbar">
+        <div className="mobile-topbar-logo">
+          <img src="/logo.svg" alt="Zync Logo" className="logo-icon" />
+          <h2>Zync</h2>
+        </div>
+        <button
+          className="mobile-menu-btn"
+          onClick={() => setSidebarOpen((v) => !v)}
+          aria-label="Toggle menu"
+        >
+          {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
+      </header>
+
+      {/* Sidebar backdrop on mobile */}
+      {sidebarOpen && (
+        <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      <aside className={`sidebar${sidebarOpen ? " sidebar--open" : ""}`}>
         <div className="sidebar-logo">
           <img src="/logo.svg" alt="Zync Logo" className="logo-icon" />
           <h2>Zync</h2>
@@ -50,32 +81,40 @@ const AppLayout = () => {
             className={({ isActive }) =>
               isActive ? "nav-link active" : "nav-link"
             }
+            onClick={handleNavClick}
           >
-            <span className="nav-icon">▦</span> Dashboard
+            <span className="nav-icon">▦</span>
+            <span className="nav-label">Dashboard</span>
           </NavLink>
           <NavLink
             to="/tasks"
             className={({ isActive }) =>
               isActive ? "nav-link active" : "nav-link"
             }
+            onClick={handleNavClick}
           >
-            <span className="nav-icon">✓</span> Tasks
+            <span className="nav-icon">✓</span>
+            <span className="nav-label">Tasks</span>
           </NavLink>
           <NavLink
             to="/goals"
             className={({ isActive }) =>
               isActive ? "nav-link active" : "nav-link"
             }
+            onClick={handleNavClick}
           >
-            <span className="nav-icon">⚑</span> Goals
+            <span className="nav-icon">⚑</span>
+            <span className="nav-label">Goals</span>
           </NavLink>
           <NavLink
             to="/check-in"
             className={({ isActive }) =>
               isActive ? "nav-link active" : "nav-link"
             }
+            onClick={handleNavClick}
           >
-            <span className="nav-icon">✎</span> Daily Check-In
+            <span className="nav-icon">✎</span>
+            <span className="nav-label">Daily Check-In</span>
           </NavLink>
         </nav>
 
@@ -96,6 +135,47 @@ const AppLayout = () => {
       <main className="main-content">
         <Outlet />
       </main>
+
+      {/* Bottom navigation — mobile only */}
+      <nav className="bottom-nav">
+        <NavLink
+          to="/"
+          end
+          className={({ isActive }) =>
+            isActive ? "bottom-nav-link active" : "bottom-nav-link"
+          }
+        >
+          <LayoutDashboard size={20} />
+          <span>Dashboard</span>
+        </NavLink>
+        <NavLink
+          to="/tasks"
+          className={({ isActive }) =>
+            isActive ? "bottom-nav-link active" : "bottom-nav-link"
+          }
+        >
+          <CheckSquare size={20} />
+          <span>Tasks</span>
+        </NavLink>
+        <NavLink
+          to="/goals"
+          className={({ isActive }) =>
+            isActive ? "bottom-nav-link active" : "bottom-nav-link"
+          }
+        >
+          <Flag size={20} />
+          <span>Goals</span>
+        </NavLink>
+        <NavLink
+          to="/check-in"
+          className={({ isActive }) =>
+            isActive ? "bottom-nav-link active" : "bottom-nav-link"
+          }
+        >
+          <BookOpen size={20} />
+          <span>Check-In</span>
+        </NavLink>
+      </nav>
     </div>
   );
 };

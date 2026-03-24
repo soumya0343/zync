@@ -5,6 +5,7 @@ import TaskModal from "../../components/TaskModal";
 import TasksBoardHeader from "./components/TasksBoardHeader";
 import QuickAddBar from "./components/QuickAddBar";
 import KanbanColumn from "./components/KanbanColumn";
+import PriorityView from "./components/PriorityView";
 import LoadingScreen from "../../components/common/LoadingScreen";
 import EmptyState from "../../components/common/EmptyState";
 import { boardService } from "../../services/boardService";
@@ -24,9 +25,9 @@ const mapToKanbanTask = (task: any): KanbanTask => {
   return {
     id: task.id,
     title: task.title,
-    category: task.column?.title?.toUpperCase() || "TASK",
+    category: (task.category?.toUpperCase() || task.goal?.title?.toUpperCase() || "TASK") as KanbanTask["category"],
     kanbanStatus:
-      (task.column?.title.toLowerCase().replace(" ", "-") as KanbanStatus) ||
+      (task.column?.title.toLowerCase().replaceAll(" ", "-") as KanbanStatus) ||
       "backlog",
     numericPriority: priorityMap[task.priority?.toLowerCase()] ?? 3,
     dueDateLabel: task.dueDate
@@ -44,6 +45,11 @@ const Tasks = () => {
   const [columns, setColumns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+
+  // Filter & view state
+  const [filterText, setFilterText] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState<number | null>(null);
+  const [view, setView] = useState<"board" | "list">("board");
 
   // Listen for sidebar "New Task" button
   useEffect(() => {
@@ -146,7 +152,6 @@ const Tasks = () => {
         columnId: destination.droppableId,
         order: destination.index,
       });
-      // Optionally reload board to sync if needed, but optimistic is better UX
     } catch (error) {
       console.error("Failed to move task", error);
       fetchBoard(); // Revert on error
@@ -160,9 +165,35 @@ const Tasks = () => {
   const hasColumns = columns.length > 0;
   const totalTasks = columns.reduce((sum, col) => sum + (col.tasks?.length ?? 0), 0);
 
+  // Filter helper applied to raw backend tasks per column
+  const applyFilters = (tasks: any[]): any[] =>
+    tasks
+      .filter(
+        (t) =>
+          !filterText ||
+          t.title.toLowerCase().includes(filterText.toLowerCase()),
+      )
+      .filter(
+        (t) =>
+          priorityFilter === null ||
+          mapToKanbanTask(t).numericPriority === priorityFilter,
+      );
+
+  // All mapped tasks for PriorityView (after filters)
+  const allFilteredTasks: KanbanTask[] = columns.flatMap((col) =>
+    applyFilters(col.tasks).map(mapToKanbanTask),
+  );
+
   return (
     <div className="tasks-page">
-      <TasksBoardHeader />
+      <TasksBoardHeader
+        filterText={filterText}
+        onFilterChange={setFilterText}
+        priorityFilter={priorityFilter}
+        onPriorityChange={setPriorityFilter}
+        view={view}
+        onViewChange={setView}
+      />
       <QuickAddBar
         onAddTask={(title) => {
           // Default to first column (usually backlog/todo)
@@ -171,58 +202,62 @@ const Tasks = () => {
           }
         }}
       />
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className="kanban-board">
-          {!hasColumns ? (
-            <EmptyState
-              icon="📋"
-              title="No board yet"
-              description="Your task board will appear here once set up."
-              actionLabel="Add your first task"
-              onAction={() => setIsTaskModalOpen(true)}
-            />
-          ) : totalTasks === 0 ? (
-            <div className="tasks-empty-wrapper">
+
+      {view === "list" ? (
+        <PriorityView tasks={allFilteredTasks} onCardClick={handleCardClick} />
+      ) : (
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div className="kanban-board">
+            {!hasColumns ? (
               <EmptyState
-                icon="✓"
-                title="No tasks yet"
-                description="Add a task above or open the menu to create one."
-                actionLabel="Add task"
+                icon="📋"
+                title="No board yet"
+                description="Your task board will appear here once set up."
+                actionLabel="Add your first task"
                 onAction={() => setIsTaskModalOpen(true)}
-                compact
               />
-            </div>
-          ) : null}
-          {hasColumns && totalTasks > 0 && columns.map((col: any) => {
-            // Map tasks for this column
-            const kanbanTasks = col.tasks.map(mapToKanbanTask);
+            ) : totalTasks === 0 ? (
+              <div className="tasks-empty-wrapper">
+                <EmptyState
+                  icon="✓"
+                  title="No tasks yet"
+                  description="Add a task above or open the menu to create one."
+                  actionLabel="Add task"
+                  onAction={() => setIsTaskModalOpen(true)}
+                  compact
+                />
+              </div>
+            ) : null}
+            {hasColumns &&
+              columns.map((col: any) => {
+                const filteredRaw = applyFilters(col.tasks);
+                const kanbanTasks = filteredRaw.map(mapToKanbanTask);
 
-            // Map column title to a color helper?
-            // Using hardcoded colors for now based on title matching
-            let color = "#6b7280";
-            const lowerTitle = col.title.toLowerCase();
-            if (lowerTitle.includes("todo") || lowerTitle.includes("backlog"))
-              color = "#6b7280";
-            else if (lowerTitle.includes("progress")) color = "#8b5cf6";
-            else if (lowerTitle.includes("done")) color = "#16a34a";
-            else if (lowerTitle.includes("blocked")) color = "#ef4444";
-            else if (lowerTitle.includes("planned")) color = "#f59e0b";
+                let color = "#6b7280";
+                const lowerTitle = col.title.toLowerCase();
+                if (lowerTitle.includes("todo") || lowerTitle.includes("backlog"))
+                  color = "#6b7280";
+                else if (lowerTitle.includes("progress")) color = "#8b5cf6";
+                else if (lowerTitle.includes("done")) color = "#16a34a";
+                else if (lowerTitle.includes("blocked")) color = "#ef4444";
+                else if (lowerTitle.includes("planned")) color = "#f59e0b";
 
-            return (
-              <KanbanColumn
-                key={col.id}
-                id={col.id}
-                title={col.title}
-                count={col.tasks.length}
-                color={color}
-                tasks={kanbanTasks}
-                onCardClick={handleCardClick}
-                onAddTask={(title) => handleAddTask(title, col.id)}
-              />
-            );
-          })}
-        </div>
-      </DragDropContext>
+                return (
+                  <KanbanColumn
+                    key={col.id}
+                    id={col.id}
+                    title={col.title}
+                    count={kanbanTasks.length}
+                    color={color}
+                    tasks={kanbanTasks}
+                    onCardClick={handleCardClick}
+                    onAddTask={(title) => handleAddTask(title, col.id)}
+                  />
+                );
+              })}
+          </div>
+        </DragDropContext>
+      )}
 
       <TaskModal
         isOpen={isTaskModalOpen}

@@ -17,6 +17,22 @@
   }
 }
 
+@media (max-width: 768px) {
+  .dashboard-page {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-page {
+    padding: 1rem;
+  }
+
+  .dashboard-grid {
+    gap: 1rem;
+  }
+}
+
 .main-column {
   display: flex;
   flex-direction: column;

@@ -79,3 +79,9 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+@media (max-width: 640px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}

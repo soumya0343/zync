@@ -5,3 +5,15 @@
   box-sizing: border-box;
   /* overflow: hidden; Removed to allow page scrolling */
 }
+
+@media (max-width: 768px) {
+  .tasks-page {
+    padding: 1.25rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .tasks-page {
+    padding: 1rem;
+  }
+}
