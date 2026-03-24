@@ -42,6 +42,8 @@ function taskDocToJson(t: DocumentSnapshot) {
     columnId: td?.columnId,
     goalId: td?.goalId ?? null,
     createdAt: timestampToDate(td?.createdAt as Timestamp)?.toISOString() ?? null,
+    updatedAt: timestampToDate(td?.updatedAt as Timestamp)?.toISOString() ?? null,
+    completedAt: timestampToDate(td?.completedAt as Timestamp)?.toISOString() ?? null,
     dueDate: td?.dueDate ? timestampToDate(td.dueDate as Timestamp)?.toISOString() : null,
     parentId: td?.parentId ?? null,
   };
@@ -71,10 +73,24 @@ async function getColumnsForBoard(boardId: string) {
     tasksByColumnId[colId].sort((a, b) => (a.data()?.order ?? 0) - (b.data()?.order ?? 0));
   }
 
+  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const isDoneCol = (title: string) =>
+    title.toLowerCase().includes("done") || title.toLowerCase().includes("complete");
+
   for (const doc of docsSorted) {
     const col = docToColumn(doc);
     if (col) {
-      col.tasks = (tasksByColumnId[doc.id] ?? []).map(taskDocToJson);
+      const tasks = (tasksByColumnId[doc.id] ?? []).map(taskDocToJson);
+      if (isDoneCol(col.title)) {
+        col.tasks = tasks.filter((t: any) => {
+          const completedAt = t.completedAt ? new Date(t.completedAt) : null;
+          const updatedAt = t.updatedAt ? new Date(t.updatedAt) : null;
+          const resolvedDate = completedAt ?? updatedAt;
+          return !resolvedDate || resolvedDate >= oneWeekAgo;
+        });
+      } else {
+        col.tasks = tasks;
+      }
       columns.push(col);
     }
   }
