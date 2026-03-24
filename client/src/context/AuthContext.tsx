@@ -12,6 +12,8 @@ import {
 } from "firebase/auth";
 import { auth } from "../lib/firebase";
 
+const AUTH_CACHE_KEY = "zync_auth_user";
+
 interface UserInfo {
   id: string;
   email: string;
@@ -42,15 +44,35 @@ function firebaseUserToUser(u: User): UserInfo {
   };
 }
 
+function readCachedUser(): UserInfo | null {
+  try {
+    const raw = localStorage.getItem(AUTH_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as UserInfo) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedUser(u: UserInfo | null) {
+  if (u) {
+    localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(u));
+  } else {
+    localStorage.removeItem(AUTH_CACHE_KEY);
+  }
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<UserInfo | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Initialize synchronously from localStorage — no loading delay for returning users
+  const [user, setUser] = useState<UserInfo | null>(readCachedUser);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser ? firebaseUserToUser(firebaseUser) : null);
+      const userInfo = firebaseUser ? firebaseUserToUser(firebaseUser) : null;
+      setUser(userInfo);
+      writeCachedUser(userInfo);
       setIsLoading(false);
     });
     return () => unsub();
@@ -62,7 +84,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }) => {
     const { email, password } = credentials;
     const { user: u } = await signInWithEmailAndPassword(auth, email, password);
-    setUser(firebaseUserToUser(u));
+    const userInfo = firebaseUserToUser(u);
+    setUser(userInfo);
+    writeCachedUser(userInfo);
   };
 
   const register = async (userData: {
@@ -79,24 +103,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     if (name?.trim()) {
       await updateProfile(u, { displayName: name.trim() });
     }
-    setUser(firebaseUserToUser(u));
+    const userInfo = firebaseUserToUser(u);
+    setUser(userInfo);
+    writeCachedUser(userInfo);
   };
 
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     const { user: u } = await signInWithPopup(auth, provider);
-    setUser(firebaseUserToUser(u));
+    const userInfo = firebaseUserToUser(u);
+    setUser(userInfo);
+    writeCachedUser(userInfo);
   };
 
   const loginWithApple = async () => {
     const provider = new OAuthProvider("apple.com");
     const { user: u } = await signInWithPopup(auth, provider);
-    setUser(firebaseUserToUser(u));
+    const userInfo = firebaseUserToUser(u);
+    setUser(userInfo);
+    writeCachedUser(userInfo);
   };
 
   const logout = async () => {
     await firebaseSignOut(auth);
     setUser(null);
+    writeCachedUser(null);
   };
 
   return (

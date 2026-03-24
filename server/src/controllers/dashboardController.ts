@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { db, timestampToDate } from "../lib/firebase";
+import { db, timestampToDate, auth } from "../lib/firebase";
 import type { Timestamp, QueryDocumentSnapshot } from "firebase-admin/firestore";
 
 const boardsCol = () => db.collection("boards");
@@ -25,12 +25,16 @@ export const getDashboardData = async (
     const nextWeek = new Date(today);
     nextWeek.setDate(nextWeek.getDate() + 7);
 
-    const auth = (await import("../lib/firebase")).auth;
-    const firebaseUser = await auth.getUser(userId).catch(() => null);
-    const userName = firebaseUser?.displayName ?? "User";
+    // Run independent queries in parallel
+    const [firebaseUser, boardSnap, goalsSnap] = await Promise.all([
+      auth.getUser(userId).catch(() => null),
+      boardsCol().where("userId", "==", userId).get(),
+      goalsCol().where("userId", "==", userId).get(),
+    ]);
 
-    const boardSnap = await boardsCol().where("userId", "==", userId).get();
+    const userName = firebaseUser?.displayName ?? "User";
     const boardIds = boardSnap.docs.map((d) => d.id);
+
     if (boardIds.length === 0) {
       return res.json({
         userName,
@@ -71,8 +75,7 @@ export const getDashboardData = async (
       const snap = await tasksCol().where("columnId", "in", chunk).get();
       snap.docs.forEach((d) => allTaskDocs.push(d));
     }
-    const tasksSnap = { docs: allTaskDocs };
-    const tasks = tasksSnap.docs.map((d) => {
+    const tasks = allTaskDocs.map((d) => {
       const t = d.data();
       return {
         id: d.id,
@@ -98,7 +101,6 @@ export const getDashboardData = async (
       return !isDoneColumn(colTitle) && dt >= today && dt < tomorrow;
     }).length;
 
-    const goalsSnap = await goalsCol().where("userId", "==", userId).get();
     const activeGoalsRaw = goalsSnap.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
       .filter((g: any) => (g.progress ?? 0) < 100)
@@ -181,7 +183,6 @@ export const getDashboardData = async (
     const isNotFound = error?.code === 5 || error?.message?.includes("NOT_FOUND");
     if (isNotFound) {
       console.error("[SERVER] Firestore database not found. Create it at https://console.firebase.google.com → your project → Build → Firestore Database → Create database.");
-      const auth = (await import("../lib/firebase")).auth;
       const firebaseUser = await auth.getUser(req.user!.userId).catch(() => null);
       const userName = firebaseUser?.displayName ?? "User";
       return res.json({
