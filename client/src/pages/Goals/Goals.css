@@ -637,3 +637,145 @@
   background: #ccc;
   cursor: not-allowed;
 }
+
+/* ─── Goal Card Dropdown Menu ────────────────────────────── */
+
+.goal-card-wrapper {
+  position: relative;
+}
+
+.goal-card-dropdown {
+  position: absolute;
+  top: 2.5rem;
+  right: 0.75rem;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  z-index: 100;
+  min-width: 130px;
+  overflow: hidden;
+}
+
+.goal-dropdown-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0.6rem 1rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  color: #333;
+}
+
+.goal-dropdown-item:hover {
+  background: #f5f5f5;
+}
+
+.goal-dropdown-item--danger {
+  color: #ef4444;
+}
+
+.goal-dropdown-item--danger:hover {
+  background: #fef2f2;
+}
+
+/* ─── Sort Menu ──────────────────────────────────────────── */
+
+.goals-sort-wrapper {
+  position: relative;
+}
+
+.goals-sort-menu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  z-index: 100;
+  min-width: 130px;
+  overflow: hidden;
+}
+
+.goals-sort-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0.6rem 1rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  color: #333;
+}
+
+.goals-sort-option:hover {
+  background: #f5f5f5;
+}
+
+.goals-sort-option.active {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+/* ─── List View ──────────────────────────────────────────── */
+
+.goals-grid--list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.goals-grid--list .goal-card-wrapper,
+.goals-grid--list .goal-card-link {
+  display: block;
+}
+
+.goals-grid--list .goal-card {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 10px;
+}
+
+.goals-grid--list .goal-card-top {
+  flex-shrink: 0;
+}
+
+.goals-grid--list .goal-card-desc {
+  display: none;
+}
+
+.goals-grid--list .goal-card-title {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.goals-grid--list .goal-progress-section {
+  flex: 1;
+  min-width: 120px;
+  max-width: 200px;
+}
+
+.goals-grid--list .goal-card-footer {
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
+.goals-grid--list .goal-progress-section {
+  margin-top: 0;
+}
+
+.goals-grid--list .goal-card-new {
+  flex-direction: row;
+  padding: 0.85rem 1.25rem;
+  border-radius: 10px;
+  gap: 1rem;
+  min-height: unset;
+}

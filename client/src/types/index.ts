@@ -8,7 +8,7 @@ export type KanbanStatus =
   | "in-progress"
   | "blocked"
   | "done";
-export type TaskCategory = "SCHOOL" | "LIFE" | "WORK";
+export type TaskCategory = "SCHOOL" | "LIFE" | "WORK" | "TASK" | "SUBTASK";
 
 export interface Task {
   id: string;

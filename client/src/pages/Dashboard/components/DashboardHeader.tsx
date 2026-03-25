@@ -36,7 +36,7 @@ const DashboardHeader = ({
         <div className="date-display">
           <span className="calendar-icon">📅</span> {todayDate}
         </div>
-        <h1>{greeting}, {userName}</h1>
+        <h1>{greeting}, {userName.split(" ")[0]}</h1>
         <p className="subtitle">
           You have {priorityTaskCount} tasks due today.
         </p>

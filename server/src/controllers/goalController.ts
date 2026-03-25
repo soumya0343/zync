@@ -4,7 +4,8 @@ import {
   timestampToDate,
   dateToTimestamp,
 } from "../lib/firebase";
-import type { Timestamp, DocumentSnapshot } from "firebase-admin/firestore";
+import type { Timestamp, DocumentSnapshot, QueryDocumentSnapshot } from "firebase-admin/firestore";
+import { FieldPath } from "firebase-admin/firestore";
 
 const goalsCol = () => db.collection("goals");
 const tasksCol = () => db.collection("tasks");
@@ -27,15 +28,28 @@ function goalToJson(doc: DocumentSnapshot, includeTasks = false): any {
   return g;
 }
 
-function taskToGoalTaskJson(t: import("firebase-admin/firestore").QueryDocumentSnapshot) {
+function taskToGoalTaskJson(
+  t: QueryDocumentSnapshot,
+  columnTitleById: Record<string, string>,
+) {
   const td = t.data();
   return {
     id: t.id,
     ...td,
     createdAt: timestampToDate(td.createdAt as Timestamp)?.toISOString(),
     dueDate: td.dueDate ? timestampToDate(td.dueDate as Timestamp)?.toISOString() : null,
-    column: { id: td.columnId },
+    column: { id: td.columnId, title: columnTitleById[td.columnId] ?? "" },
   };
+}
+
+async function fetchColumnTitles(columnIds: string[]): Promise<Record<string, string>> {
+  const map: Record<string, string> = {};
+  for (let i = 0; i < columnIds.length; i += 10) {
+    const chunk = columnIds.slice(i, i + 10);
+    const snap = await columnsCol().where(FieldPath.documentId(), "in", chunk).get();
+    snap.docs.forEach((d) => { map[d.id] = d.data()?.title ?? ""; });
+  }
+  return map;
 }
 
 export const getGoals = async (
@@ -65,10 +79,14 @@ export const getGoals = async (
         tasksByGoalId[gid].sort((a, b) => (a.data()?.order ?? 0) - (b.data()?.order ?? 0));
       });
     }
+    const allTaskDocs = Object.values(tasksByGoalId).flat();
+    const uniqueColIds = [...new Set(allTaskDocs.map((t) => t.data()?.columnId).filter(Boolean))] as string[];
+    const columnTitleById = uniqueColIds.length > 0 ? await fetchColumnTitles(uniqueColIds) : {};
+
     const goals = docsSorted.map((doc) => {
       const g = goalToJson(doc, true);
       if (g) {
-        g.tasks = (tasksByGoalId[doc.id] ?? []).map(taskToGoalTaskJson);
+        g.tasks = (tasksByGoalId[doc.id] ?? []).map((t) => taskToGoalTaskJson(t, columnTitleById));
       }
       return g;
     }).filter(Boolean);
@@ -97,16 +115,9 @@ export const getGoal = async (
     const g = goalToJson(doc, true);
     const tasksSnap = await tasksCol().where("goalId", "==", id).get();
     const taskDocsSorted = [...tasksSnap.docs].sort((a, b) => (a.data().order ?? 0) - (b.data().order ?? 0));
-    g.tasks = taskDocsSorted.map((t) => {
-      const td = t.data();
-      return {
-        id: t.id,
-        ...td,
-        createdAt: timestampToDate(td.createdAt as Timestamp)?.toISOString(),
-        dueDate: td.dueDate ? timestampToDate(td.dueDate as Timestamp)?.toISOString() : null,
-        column: { id: td.columnId },
-      };
-    });
+    const colIds = [...new Set(taskDocsSorted.map((t) => t.data()?.columnId).filter(Boolean))] as string[];
+    const columnTitleById = colIds.length > 0 ? await fetchColumnTitles(colIds) : {};
+    g.tasks = taskDocsSorted.map((t) => taskToGoalTaskJson(t, columnTitleById));
     res.json(g);
   } catch (error: any) {
     if (error?.code === 5 || error?.message?.includes("NOT_FOUND")) {

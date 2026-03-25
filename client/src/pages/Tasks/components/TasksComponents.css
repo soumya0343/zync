@@ -224,6 +224,7 @@
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  touch-action: none; /* let @hello-pangea/dnd handle all touch events for drag */
 }
 
 .kanban-card:hover {
@@ -441,12 +442,51 @@
   border: 2px solid #ddd;
   border-radius: 4px;
   flex-shrink: 0;
+  position: relative;
+}
+
+.priority-row-checkbox--done {
+  background: #1a1a1a;
+  border-color: #1a1a1a;
+}
+
+.priority-row-checkbox--done::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 4px;
+  height: 8px;
+  border: 2px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
 }
 
 .priority-row-title {
   font-size: 0.82rem;
   font-weight: 600;
   color: #333;
+}
+
+/* ─── Done state styling ─────────────────────────────────── */
+
+.kanban-card--done {
+  opacity: 0.55;
+}
+
+.kanban-card--done .kanban-card-title {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.priority-row--done {
+  opacity: 0.55;
+}
+
+.priority-row--done .priority-row-title {
+  text-decoration: line-through;
+  color: #9ca3af;
 }
 
 .priority-row-tag {
@@ -602,7 +642,8 @@
 @media (max-width: 640px) {
   .kanban-board {
     scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
+    /* -webkit-overflow-scrolling: touch removed — it creates a native scroll layer
+       that ignores touch-action: none on child cards, breaking drag-and-drop */
   }
 
   .kanban-column {

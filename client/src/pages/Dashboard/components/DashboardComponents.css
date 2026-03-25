@@ -112,6 +112,29 @@
 .task-checkbox input[type="checkbox"]:checked {
   background: #1a1a1a;
   border-color: #1a1a1a;
+  position: relative;
+}
+
+.task-checkbox input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 5px;
+  height: 9px;
+  border: 2px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+.task-item--completed {
+  opacity: 0.6;
+}
+
+.task-item--completed .task-title {
+  text-decoration: line-through;
+  color: #999;
 }
 
 .task-details {

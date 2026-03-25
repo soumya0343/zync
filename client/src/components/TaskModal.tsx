@@ -85,22 +85,33 @@ const TaskModal = ({
         setPriority("medium");
         setDueDate("");
         setDueTime("");
-        setGoalId("");
+        setGoalId(initialGoalId || "");
         setLinkedTaskId(parentId || "");
       }
 
       // Fetch goals and, for subtask, boards in parallel to open modal faster
       if (type === "subtask") {
-        Promise.all([goalService.getGoals(), boardService.getBoards()])
-          .then(([goalsData, boards]: [Goal[], Board[]]) => {
-            setGoals(goalsData);
+        const fetches: Promise<unknown>[] = [
+          goalService.getGoals(),
+          boardService.getBoards(),
+        ];
+        // If no goal pre-selected, inherit from parent task
+        if (parentId && !initialGoalId) {
+          fetches.push(taskService.getTask(parentId));
+        }
+        Promise.all(fetches)
+          .then(([goalsData, boards, parentTask]: unknown[]) => {
+            setGoals(goalsData as Goal[]);
             const tasks: Task[] = [];
-            boards.forEach((board: Board) => {
+            (boards as Board[]).forEach((board: Board) => {
               board.columns?.forEach((col) => {
                 if (col.tasks) tasks.push(...col.tasks);
               });
             });
             setAvailableTasks(tasks);
+            if (parentTask && (parentTask as any).goalId) {
+              setGoalId((parentTask as any).goalId);
+            }
           })
           .catch((err: unknown) => console.error("Failed to fetch goals/tasks", err));
       } else {

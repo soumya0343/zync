@@ -41,4 +41,9 @@ export const taskService = {
     const response = await api.get(`/tasks/${id}`);
     return response.data;
   },
+
+  completeTask: async (id: string) => {
+    const response = await api.patch(`/tasks/${id}/complete`);
+    return response.data;
+  },
 };

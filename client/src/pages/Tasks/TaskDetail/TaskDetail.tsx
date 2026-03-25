@@ -45,13 +45,16 @@ const mapTaskToUI = (task: any) => {
   }
   breadcrumb.push(...parents);
 
+  const depth = parents.length;
+  const tag = depth === 0 ? "TASK" : `SUBTASK-${depth}`;
+
   return {
     ...task,
     status,
     priority,
     statusColor: colors[status] || "#6b7280",
     breadcrumb, // Array of objects now
-    tag: "TASK",
+    tag,
     assignee: "Me", // Hardcoded for now
     rawDueDate: task.dueDate,
     dueDate: task.dueDate ? new Date(task.dueDate).toLocaleDateString() : null,
@@ -252,7 +255,13 @@ const TaskDetail = () => {
                         className={`td-subtask-check ${childStatus === "done" ? "checked" : ""}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          // Toggle logic would go here
+                          const isDone = childStatus === "done";
+                          const targetCol = isDone
+                            ? columns.find((c) => c.title.toLowerCase().includes("todo") || c.title.toLowerCase().includes("to do")) ?? columns[0]
+                            : columns.find((c) => c.title.toLowerCase().includes("done") || c.title.toLowerCase().includes("complete"));
+                          if (targetCol) {
+                            taskService.updateTask(child.id, { columnId: targetCol.id }).then(fetchTask);
+                          }
                         }}
                       >
                         {childStatus === "done" && "✓"}

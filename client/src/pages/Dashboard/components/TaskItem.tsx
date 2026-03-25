@@ -24,7 +24,7 @@ const TaskItem = ({ task, onClick, completed, onToggleComplete, statusLabel }: T
 
   return (
     <div
-      className="task-item"
+      className={`task-item${isCompleted ? " task-item--completed" : ""}`}
       onClick={() => onClick?.(task.id)}
       style={{ cursor: onClick ? "pointer" : "default" }}
     >

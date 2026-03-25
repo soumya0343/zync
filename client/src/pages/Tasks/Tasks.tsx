@@ -14,7 +14,7 @@ import type { KanbanTask, KanbanStatus } from "../../types";
 import "./Tasks.css";
 
 // Helper to map backend task to frontend KanbanTask
-const mapToKanbanTask = (task: any): KanbanTask => {
+const mapToKanbanTask = (task: any, depth = 0): KanbanTask => {
   const priorityMap: Record<string, number> = {
     urgent: 0,
     high: 1,
@@ -25,10 +25,15 @@ const mapToKanbanTask = (task: any): KanbanTask => {
   return {
     id: task.id,
     title: task.title,
-    category: (task.category?.toUpperCase() || task.goal?.title?.toUpperCase() || "TASK") as KanbanTask["category"],
-    kanbanStatus:
-      (task.column?.title.toLowerCase().replaceAll(" ", "-") as KanbanStatus) ||
-      "backlog",
+    category: (depth > 0 ? `SUBTASK-${depth}` : task.category?.toUpperCase() || task.goal?.title?.toUpperCase() || "TASK") as KanbanTask["category"],
+    kanbanStatus: (() => {
+      const slug = task.column?.title?.toLowerCase().replaceAll(" ", "-");
+      const VALID: KanbanStatus[] = ["backlog", "planned", "in-progress", "blocked", "done"];
+      if (slug && VALID.includes(slug as KanbanStatus)) return slug as KanbanStatus;
+      // For unrecognised columns (e.g. "to-do"), only show Backlog if deadline has passed
+      const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
+      return isOverdue ? "backlog" : "planned";
+    })(),
     numericPriority: priorityMap[task.priority?.toLowerCase()] ?? 3,
     dueDateLabel: task.dueDate
       ? new Date(task.dueDate).toLocaleDateString("en-US", {
@@ -50,6 +55,7 @@ const Tasks = () => {
   const [filterText, setFilterText] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<number | null>(null);
   const [view, setView] = useState<"board" | "list">("board");
+  const [isDragging, setIsDragging] = useState(false);
 
   // Listen for sidebar "New Task" button
   useEffect(() => {
@@ -97,6 +103,7 @@ const Tasks = () => {
   };
 
   const onDragEnd = async (result: DropResult) => {
+    setIsDragging(false);
     const { source, destination, draggableId } = result;
 
     // Dropped outside the list
@@ -165,6 +172,22 @@ const Tasks = () => {
   const hasColumns = columns.length > 0;
   const totalTasks = columns.reduce((sum, col) => sum + (col.tasks?.length ?? 0), 0);
 
+  // Build a flat id→task map to compute subtask depth
+  const taskById = new Map<string, any>();
+  for (const col of columns) {
+    for (const t of col.tasks ?? []) taskById.set(t.id, t);
+  }
+  const getDepth = (task: any): number => {
+    let depth = 0;
+    let parentId: string | null = task.parentId ?? null;
+    while (parentId) {
+      const parent = taskById.get(parentId);
+      depth++;
+      parentId = parent?.parentId ?? null;
+    }
+    return depth;
+  };
+
   // Filter helper applied to raw backend tasks per column
   const applyFilters = (tasks: any[]): any[] =>
     tasks
@@ -181,7 +204,7 @@ const Tasks = () => {
 
   // All mapped tasks for PriorityView (after filters)
   const allFilteredTasks: KanbanTask[] = columns.flatMap((col) =>
-    applyFilters(col.tasks).map(mapToKanbanTask),
+    applyFilters(col.tasks).map((t) => mapToKanbanTask({ ...t, column: { title: col.title } }, getDepth(t))),
   );
 
   return (
@@ -206,8 +229,8 @@ const Tasks = () => {
       {view === "list" ? (
         <PriorityView tasks={allFilteredTasks} onCardClick={handleCardClick} />
       ) : (
-        <DragDropContext onDragEnd={onDragEnd}>
-          <div className="kanban-board">
+        <DragDropContext onDragStart={() => setIsDragging(true)} onDragEnd={onDragEnd}>
+          <div className="kanban-board" style={isDragging ? { scrollSnapType: "none" } : undefined}>
             {!hasColumns ? (
               <EmptyState
                 icon="📋"
@@ -231,7 +254,7 @@ const Tasks = () => {
             {hasColumns &&
               columns.map((col: any) => {
                 const filteredRaw = applyFilters(col.tasks);
-                const kanbanTasks = filteredRaw.map(mapToKanbanTask);
+                const kanbanTasks = filteredRaw.map((t) => mapToKanbanTask({ ...t, column: { title: col.title } }, getDepth(t)));
 
                 let color = "#6b7280";
                 const lowerTitle = col.title.toLowerCase();

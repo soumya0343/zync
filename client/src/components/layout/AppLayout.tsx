@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { LogOut, Menu, X, LayoutDashboard, CheckSquare, Flag, BookOpen } from "lucide-react";
+import { LogOut, Menu, X, LayoutDashboard, CheckSquare, Flag, PenLine } from "lucide-react";
 import "./AppLayout.css";
 
 const AppLayout = () => {
@@ -83,7 +83,7 @@ const AppLayout = () => {
             }
             onClick={handleNavClick}
           >
-            <span className="nav-icon">▦</span>
+            <LayoutDashboard size={18} />
             <span className="nav-label">Dashboard</span>
           </NavLink>
           <NavLink
@@ -93,7 +93,7 @@ const AppLayout = () => {
             }
             onClick={handleNavClick}
           >
-            <span className="nav-icon">✓</span>
+            <CheckSquare size={18} />
             <span className="nav-label">Tasks</span>
           </NavLink>
           <NavLink
@@ -103,7 +103,7 @@ const AppLayout = () => {
             }
             onClick={handleNavClick}
           >
-            <span className="nav-icon">⚑</span>
+            <Flag size={18} />
             <span className="nav-label">Goals</span>
           </NavLink>
           <NavLink
@@ -113,7 +113,7 @@ const AppLayout = () => {
             }
             onClick={handleNavClick}
           >
-            <span className="nav-icon">✎</span>
+            <PenLine size={18} />
             <span className="nav-label">Daily Check-In</span>
           </NavLink>
         </nav>
@@ -172,7 +172,7 @@ const AppLayout = () => {
             isActive ? "bottom-nav-link active" : "bottom-nav-link"
           }
         >
-          <BookOpen size={20} />
+          <PenLine size={20} />
           <span>Check-In</span>
         </NavLink>
       </nav>

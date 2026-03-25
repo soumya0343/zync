@@ -250,6 +250,42 @@ export const updateTask = async (
   }
 };
 
+export const completeTask = async (
+  req: Request & { user?: { userId: string } },
+  res: Response,
+) => {
+  try {
+    const { id } = req.params;
+    if (typeof id !== "string") return res.status(400).json({ message: "Invalid task ID" });
+
+    const taskSnap = await tasksCol().doc(id).get();
+    if (!taskSnap.exists) return res.status(404).json({ message: "Task not found" });
+    const task = taskSnap.data()!;
+
+    const colSnap = await columnsCol().doc(task.columnId).get();
+    if (!colSnap.exists) return res.status(404).json({ message: "Task not found" });
+    const boardId = colSnap.data()?.boardId;
+
+    const boardSnap = await boardsCol().doc(boardId).get();
+    if (!boardSnap.exists || boardSnap.data()?.userId !== req.user?.userId)
+      return res.status(404).json({ message: "Task not found" });
+
+    const allColsSnap = await columnsCol().where("boardId", "==", boardId).get();
+    const doneCol = allColsSnap.docs.find((d) => {
+      const t = (d.data().title as string).toLowerCase();
+      return t.includes("done") || t.includes("complete");
+    });
+    if (!doneCol) return res.status(400).json({ message: "No done column found" });
+
+    const now = dateToTimestamp(new Date());
+    await tasksCol().doc(id).update({ columnId: doneCol.id, completedAt: now, updatedAt: now });
+    const snap = await tasksCol().doc(id).get();
+    res.json(taskToJson(snap));
+  } catch (error) {
+    res.status(500).json({ message: "Error completing task", error });
+  }
+};
+
 export const deleteTask = async (
   req: Request & { user?: { userId: string } },
   res: Response,

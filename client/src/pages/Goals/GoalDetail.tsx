@@ -120,12 +120,13 @@ const GoalDetail = () => {
     );
   }
 
-  const daysRemaining = goal.targetDate
-    ? Math.ceil(
-        (new Date(goal.targetDate).getTime() - new Date().getTime()) /
-          (1000 * 60 * 60 * 24),
-      )
-    : 0;
+  const daysRemaining = (() => {
+    if (!goal.targetDate) return 0;
+    const istFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" });
+    const todayMidnight = new Date(istFmt.format(new Date()));
+    const targetMidnight = new Date(istFmt.format(new Date(goal.targetDate)));
+    return Math.round((targetMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
+  })();
 
   const isTaskCompleted = (t: Task & { column?: { title?: string } }) =>
     t.column?.title?.toLowerCase() === "done" || t.status === "done";
@@ -225,7 +226,8 @@ const GoalDetail = () => {
             setEditTitle(goal.title);
             setEditDescription(goal.description ?? "");
             setEditCategory((goal.category as GoalCategory) ?? "short-term");
-            setEditTargetDate(goal.targetDate ? goal.targetDate.slice(0, 10) : "");
+            const istFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" });
+            setEditTargetDate(goal.targetDate ? istFmt.format(new Date(goal.targetDate)) : "");
             setIsEditModalOpen(true);
           }}
         >

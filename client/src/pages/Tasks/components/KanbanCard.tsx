@@ -12,6 +12,8 @@ const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
   SCHOOL: { bg: "#eef0ff", color: "#4f46e5" },
   LIFE: { bg: "#fff4ed", color: "#ea580c" },
   WORK: { bg: "#f0fdf4", color: "#16a34a" },
+  TASK: { bg: "#f3f4f6", color: "#6b7280" },
+  SUBTASK: { bg: "#fdf4ff", color: "#9333ea" },
 };
 
 const PRIORITY_COLORS: Record<number, string> = {
@@ -24,12 +26,13 @@ const PRIORITY_COLORS: Record<number, string> = {
 const KanbanCard = ({ task, index, onClick }: KanbanCardProps) => {
   const catStyle = CATEGORY_COLORS[task.category] || CATEGORY_COLORS.WORK;
   const priColor = PRIORITY_COLORS[task.numericPriority] ?? "#adb5bd";
+  const isCompleted = task.kanbanStatus === "done";
 
   return (
     <Draggable draggableId={task.id} index={index}>
       {(provided) => (
         <div
-          className="kanban-card"
+          className={`kanban-card${isCompleted ? " kanban-card--done" : ""}`}
           onClick={onClick}
           ref={provided.innerRef}
           {...provided.draggableProps}

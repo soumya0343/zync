@@ -28,6 +28,8 @@ const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
   SCHOOL: { bg: "#eef0ff", color: "#4f46e5" },
   LIFE: { bg: "#fff4ed", color: "#ea580c" },
   WORK: { bg: "#f0fdf4", color: "#16a34a" },
+  TASK: { bg: "#f3f4f6", color: "#6b7280" },
+  SUBTASK: { bg: "#fdf4ff", color: "#9333ea" },
 };
 
 const PriorityRow = ({
@@ -39,11 +41,12 @@ const PriorityRow = ({
 }) => {
   const catStyle = CATEGORY_COLORS[task.category] || { bg: "#f3f4f6", color: "#6b7280" };
   const statusInfo = STATUS_LABEL[task.kanbanStatus] || STATUS_LABEL.backlog;
+  const isCompleted = task.kanbanStatus === "done";
 
   return (
-    <div className="priority-row" onClick={onClick}>
+    <div className={`priority-row${isCompleted ? " priority-row--done" : ""}`} onClick={onClick}>
       <div className="priority-row-left">
-        <span className="priority-row-checkbox"></span>
+        <span className={`priority-row-checkbox${isCompleted ? " priority-row-checkbox--done" : ""}`}></span>
         <span className="priority-row-title">{task.title}</span>
         <span
           className="priority-row-tag"

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { goalService } from "../../services/goalService";
 import type { Goal } from "../../types";
@@ -8,7 +8,8 @@ import { CATEGORY_CONFIG } from "./goalData";
 import type { GoalCategory } from "./goalData";
 import "./Goals.css";
 
-type TabFilter = "all" | GoalCategory;
+type TabFilter = "all" | GoalCategory | "completed";
+type SortKey = "date" | "progress" | "name";
 
 const TABS: { key: TabFilter; label: string }[] = [
   { key: "all", label: "All Goals" },
@@ -27,9 +28,21 @@ const Goals = () => {
   const [activeTab, setActiveTab] = useState<TabFilter>("all");
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [sort, setSort] = useState<SortKey>("date");
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editCategory, setEditCategory] = useState<GoalCategory>("short-term");
+  const [editDueDate, setEditDueDate] = useState("");
+
+  const menuRef = useRef<HTMLDivElement>(null);
+  const sortRef = useRef<HTMLDivElement>(null);
 
   const fetchGoals = useCallback(async () => {
     try {
@@ -46,11 +59,24 @@ const Goals = () => {
     fetchGoals();
   }, [fetchGoals]);
 
-  // Listen for sidebar "+ New Goal" button
   useEffect(() => {
     const handler = () => setShowCreate(true);
     window.addEventListener("open-new-goal", handler);
     return () => window.removeEventListener("open-new-goal", handler);
+  }, []);
+
+  // Close menus on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setShowSortMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
   // Create form state
@@ -59,14 +85,24 @@ const Goals = () => {
   const [newCategory, setNewCategory] = useState<GoalCategory>("short-term");
   const [newDueDate, setNewDueDate] = useState("");
 
-  const filtered = goals.filter((g) => {
-    if (activeTab !== "all" && g.category !== activeTab) return false;
-    if (search && !g.title.toLowerCase().includes(search.toLowerCase()))
-      return false;
-    return true;
-  });
+  const filtered = goals
+    .filter((g) => {
+      if (activeTab === "completed") return g.progress >= 100;
+      if (activeTab !== "all" && g.category !== activeTab) return false;
+      if (activeTab === "all" && g.progress >= 100) return false; // hide completed from "all"
+      if (search && !g.title.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (sort === "name") return a.title.localeCompare(b.title);
+      if (sort === "progress") return b.progress - a.progress;
+      // date: soonest first
+      const da = a.targetDate ? new Date(a.targetDate).getTime() : Infinity;
+      const db = b.targetDate ? new Date(b.targetDate).getTime() : Infinity;
+      return da - db;
+    });
 
-  const activeCount = goals.filter((g) => g.category !== "completed").length;
+  const activeCount = goals.filter((g) => g.progress < 100).length;
 
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
@@ -85,6 +121,45 @@ const Goals = () => {
       setShowCreate(false);
     } catch (error) {
       console.error("Failed to create goal", error);
+    }
+  };
+
+  const handleDelete = async (goalId: string) => {
+    if (!confirm("Delete this goal? This cannot be undone.")) return;
+    try {
+      await goalService.deleteGoal(goalId);
+      setGoals((prev) => prev.filter((g) => g.id !== goalId));
+    } catch (error) {
+      console.error("Failed to delete goal", error);
+    }
+    setOpenMenuId(null);
+  };
+
+  const openEdit = (goal: Goal) => {
+    setEditingGoal(goal);
+    setEditTitle(goal.title);
+    setEditDesc(goal.description ?? "");
+    setEditCategory((goal.category as GoalCategory) ?? "short-term");
+    const istFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" });
+    setEditDueDate(goal.targetDate ? istFmt.format(new Date(goal.targetDate)) : "");
+    setShowEditModal(true);
+    setOpenMenuId(null);
+  };
+
+  const handleEditSave = async () => {
+    if (!editingGoal || !editTitle.trim()) return;
+    try {
+      await goalService.updateGoal(editingGoal.id, {
+        title: editTitle.trim(),
+        description: editDesc.trim() || undefined,
+        category: editCategory,
+        dueDate: editDueDate || undefined,
+      });
+      fetchGoals();
+      setShowEditModal(false);
+      setEditingGoal(null);
+    } catch (error) {
+      console.error("Failed to update goal", error);
     }
   };
 
@@ -120,12 +195,27 @@ const Goals = () => {
               ≡
             </button>
           </div>
-          <button className="goals-header-btn">
-            <span className="goals-header-btn-icon">☰</span> Filter
-          </button>
-          <button className="goals-header-btn">
-            <span className="goals-header-btn-icon">↕</span> Sort
-          </button>
+          <div className="goals-sort-wrapper" ref={sortRef}>
+            <button
+              className="goals-header-btn"
+              onClick={() => setShowSortMenu((v) => !v)}
+            >
+              <span className="goals-header-btn-icon">↕</span> Sort
+            </button>
+            {showSortMenu && (
+              <div className="goals-sort-menu">
+                {(["date", "progress", "name"] as SortKey[]).map((key) => (
+                  <button
+                    key={key}
+                    className={`goals-sort-option${sort === key ? " active" : ""}`}
+                    onClick={() => { setSort(key); setShowSortMenu(false); }}
+                  >
+                    {key === "date" ? "Due Date" : key === "progress" ? "Progress" : "Name"}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -153,8 +243,8 @@ const Goals = () => {
         </div>
       </div>
 
-      {/* ─ Grid ─ */}
-      <div className="goals-grid">
+      {/* ─ Grid / List ─ */}
+      <div className={`goals-grid${view === "list" ? " goals-grid--list" : ""}`} ref={menuRef}>
         {showEmptyGoals && activeTab !== "all" ? (
           <div className="goals-empty-inline">
             <EmptyState
@@ -188,101 +278,110 @@ const Goals = () => {
             CATEGORY_CONFIG["short-term"];
           const isComplete = goal.progress >= 100;
           return (
-            <Link
-              to={`/goals/${goal.id}`}
-              key={goal.id}
-              className="goal-card-link"
-              style={{ textDecoration: "none", color: "inherit" }}
-            >
-              <div className="goal-card">
-                <div className="goal-card-top">
-                  <span
-                    className="goal-category-badge"
-                    style={{ background: cat.bg, color: cat.color }}
-                  >
-                    {cat.label}
-                  </span>
+            <div key={goal.id} className="goal-card-wrapper" style={{ position: "relative" }}>
+              <Link
+                to={`/goals/${goal.id}`}
+                className="goal-card-link"
+                style={{ textDecoration: "none", color: "inherit" }}
+              >
+                <div className="goal-card">
+                  <div className="goal-card-top">
+                    <span
+                      className="goal-category-badge"
+                      style={{ background: cat.bg, color: cat.color }}
+                    >
+                      {cat.label}
+                    </span>
+                    <button
+                      type="button"
+                      className="goal-card-menu"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setOpenMenuId(openMenuId === goal.id ? null : goal.id);
+                      }}
+                    >
+                      •••
+                    </button>
+                  </div>
+
+                  <h3 className="goal-card-title">{goal.title}</h3>
+                  <p className="goal-card-desc">{goal.description}</p>
+
+                  <div className="goal-progress-section">
+                    <div className="goal-progress-header">
+                      <span className="goal-progress-label">Progress</span>
+                      <span className={`goal-progress-value ${isComplete ? "complete" : ""}`}>
+                        {goal.progress}%
+                      </span>
+                    </div>
+                    <div className="goal-progress-track">
+                      <div
+                        className={`goal-progress-fill ${isComplete ? "complete" : "default"}`}
+                        style={{ width: `${goal.progress}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="goal-card-footer">
+                    <span className="goal-footer-item">
+                      <span className="goal-footer-icon">📋</span>
+                      {goal.tasks?.length || 0} Task
+                      {(goal.tasks?.length || 0) !== 1 ? "s" : ""}
+                    </span>
+                    {goal.targetDate && (
+                      <span className="goal-footer-item">
+                        <span className="goal-footer-icon">📅</span>
+                        {new Date(goal.targetDate).toLocaleDateString("en-IN", {
+                          timeZone: "Asia/Kolkata",
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </Link>
+
+              {/* Dropdown menu */}
+              {openMenuId === goal.id && (
+                <div className="goal-card-dropdown">
                   <button
-                    type="button"
-                    className="goal-card-menu"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
+                    className="goal-dropdown-item"
+                    onClick={(e) => { e.stopPropagation(); openEdit(goal); }}
                   >
-                    •••
+                    ✏️ Edit
+                  </button>
+                  <button
+                    className="goal-dropdown-item goal-dropdown-item--danger"
+                    onClick={(e) => { e.stopPropagation(); handleDelete(goal.id); }}
+                  >
+                    🗑️ Delete
                   </button>
                 </div>
-
-                <h3 className="goal-card-title">{goal.title}</h3>
-                <p className="goal-card-desc">{goal.description}</p>
-
-                {/* Progress */}
-                <div className="goal-progress-section">
-                  <div className="goal-progress-header">
-                    <span className="goal-progress-label">Progress</span>
-                    <span
-                      className={`goal-progress-value ${isComplete ? "complete" : ""}`}
-                    >
-                      {goal.progress}%
-                    </span>
-                  </div>
-                  <div className="goal-progress-track">
-                    <div
-                      className={`goal-progress-fill ${isComplete ? "complete" : "default"}`}
-                      style={{ width: `${goal.progress}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div className="goal-card-footer">
-                  <span className="goal-footer-item">
-                    <span className="goal-footer-icon">📋</span>
-                    {goal.tasks?.length || 0} Task
-                    {(goal.tasks?.length || 0) !== 1 ? "s" : ""}
-                  </span>
-                {goal.targetDate && (
-                  <span className="goal-footer-item">
-                    <span className="goal-footer-icon">📅</span>
-                    {new Date(goal.targetDate).toLocaleDateString()}
-                  </span>
-                )}
-                </div>
-              </div>
-            </Link>
+              )}
+            </div>
           );
         })}
 
-        {/* + Create New Goal card — only when there are goals to show alongside */}
         {!showEmptyGoals && (
           <div className="goal-card-new" onClick={() => setShowCreate(true)}>
             <div className="goal-new-icon">+</div>
             <span className="goal-new-title">Create New Goal</span>
-            <span className="goal-new-desc">
-              Set your sights on something new.
-            </span>
+            <span className="goal-new-desc">Set your sights on something new.</span>
           </div>
         )}
       </div>
 
       {/* ─ Create Goal Modal ─ */}
       {showCreate && (
-        <div
-          className="goal-modal-overlay"
-          onClick={() => setShowCreate(false)}
-        >
+        <div className="goal-modal-overlay" onClick={() => setShowCreate(false)}>
           <div className="goal-modal" onClick={(e) => e.stopPropagation()}>
             <div className="goal-modal-header">
               <h2>Create New Goal</h2>
-              <button
-                className="goal-modal-close"
-                onClick={() => setShowCreate(false)}
-              >
-                ✕
-              </button>
+              <button className="goal-modal-close" onClick={() => setShowCreate(false)}>✕</button>
             </div>
-
             <div className="goal-modal-body">
               <label className="goal-form-label">
                 Goal Title
@@ -295,7 +394,6 @@ const Goals = () => {
                   autoFocus
                 />
               </label>
-
               <label className="goal-form-label">
                 Description
                 <textarea
@@ -306,25 +404,19 @@ const Goals = () => {
                   rows={3}
                 />
               </label>
-
               <div className="goal-form-row">
                 <label className="goal-form-label goal-form-half">
                   Category
                   <select
                     className="goal-form-select"
                     value={newCategory}
-                    onChange={(e) =>
-                      setNewCategory(e.target.value as GoalCategory)
-                    }
+                    onChange={(e) => setNewCategory(e.target.value as GoalCategory)}
                   >
                     {CATEGORY_OPTIONS.map((opt) => (
-                      <option key={opt.key} value={opt.key}>
-                        {opt.label}
-                      </option>
+                      <option key={opt.key} value={opt.key}>{opt.label}</option>
                     ))}
                   </select>
                 </label>
-
                 <label className="goal-form-label goal-form-half">
                   Due Date
                   <input
@@ -336,20 +428,72 @@ const Goals = () => {
                 </label>
               </div>
             </div>
-
             <div className="goal-modal-footer">
-              <button
-                className="goal-btn-cancel"
-                onClick={() => setShowCreate(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="goal-btn-create"
-                onClick={handleCreate}
-                disabled={!newTitle.trim()}
-              >
+              <button className="goal-btn-cancel" onClick={() => setShowCreate(false)}>Cancel</button>
+              <button className="goal-btn-create" onClick={handleCreate} disabled={!newTitle.trim()}>
                 Create Goal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─ Edit Goal Modal ─ */}
+      {showEditModal && editingGoal && (
+        <div className="goal-modal-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="goal-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="goal-modal-header">
+              <h2>Edit Goal</h2>
+              <button className="goal-modal-close" onClick={() => setShowEditModal(false)}>✕</button>
+            </div>
+            <div className="goal-modal-body">
+              <label className="goal-form-label">
+                Goal Title
+                <input
+                  type="text"
+                  className="goal-form-input"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  autoFocus
+                />
+              </label>
+              <label className="goal-form-label">
+                Description
+                <textarea
+                  className="goal-form-textarea"
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  rows={3}
+                />
+              </label>
+              <div className="goal-form-row">
+                <label className="goal-form-label goal-form-half">
+                  Category
+                  <select
+                    className="goal-form-select"
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value as GoalCategory)}
+                  >
+                    {CATEGORY_OPTIONS.map((opt) => (
+                      <option key={opt.key} value={opt.key}>{opt.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="goal-form-label goal-form-half">
+                  Due Date
+                  <input
+                    type="date"
+                    className="goal-form-input"
+                    value={editDueDate}
+                    onChange={(e) => setEditDueDate(e.target.value)}
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="goal-modal-footer">
+              <button className="goal-btn-cancel" onClick={() => setShowEditModal(false)}>Cancel</button>
+              <button className="goal-btn-create" onClick={handleEditSave} disabled={!editTitle.trim()}>
+                Save Changes
               </button>
             </div>
           </div>
