@@ -4,16 +4,19 @@ Zync is a modern, full-stack productivity application designed to help you manag
 
 ## Features
 
-- **Kanban Board**: Visualize your workflow with a fully interactive Kanban board supporting drag-and-drop actions.
-- **Task Management**: Create, update, and organize tasks. Break complex tasks down into subtasks for better granularity.
-- **Goal Tracking**: Set high-level goals and link them to actionable tasks to measure progress.
+- **Dashboard**: At-a-glance overview with today's focus, active goals, a productivity chart, upcoming events, and a daily quote widget.
+- **Kanban Board**: Visualize your workflow with a fully interactive Kanban board supporting drag-and-drop actions, plus a priority-based view.
+- **Task Management**: Create, update, and organize tasks. Break complex tasks down into subtasks for better granularity, with detail pages and an updates timeline.
+- **Goal Tracking**: Set high-level goals and link them to actionable tasks to measure progress, with dedicated goal detail pages.
+- **Daily Check-In & Journaling**: Log a daily work entry with mood, focused hours, and free-form reflections. Tracks a consecutive-day streak and average focused hours, with a browsable check-in history.
+- **PWA**: Installable progressive web app with offline support and an in-app update prompt.
 - **Responsive Design**: Customized sidebar and layout for a seamless experience across devices.
 - **Authentication**: Secure user authentication powered by Firebase.
 
 ## Tech Stack
 
-- **Frontend**: React 19, TypeScript, Vite, Vanilla CSS
-- **Backend**: Node.js, Express
+- **Frontend**: React 19, TypeScript, Vite, React Router, Vanilla CSS, PWA (service worker)
+- **Backend**: Node.js, Express, TypeScript
 - **Database & Auth**: Firebase / Firestore
 
 ## Getting Started
@@ -73,4 +76,5 @@ npm run dev
 - **`npm run dev`**: Runs client and server concurrently.
 - **`npm run dev:client`**: Runs only the frontend.
 - **`npm run dev:server`**: Runs only the backend.
+- **`npm run build`**: Builds the client for production.
 - **`npm run install:all`**: Installs dependencies for both client and server.
