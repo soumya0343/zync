@@ -13,7 +13,17 @@ jobs:
         env:
           FIREBASE_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_ZYNC_2018A }}
         run: |
+          if [ -z "$FIREBASE_SA" ]; then
+            echo "::error::Secret FIREBASE_SERVICE_ACCOUNT_ZYNC_2018A is empty or unset. Add the full service-account JSON under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
           printf '%s' "$FIREBASE_SA" > "$RUNNER_TEMP/sa.json"
+          # Fail loudly if the secret is not valid JSON with a service-account type
+          if ! node -e "const j=require('$RUNNER_TEMP/sa.json'); if(j.type!=='service_account'||!j.private_key) process.exit(1)"; then
+            echo "::error::Secret is not a valid service-account JSON (expected type=service_account with a private_key)."
+            rm -f "$RUNNER_TEMP/sa.json"
+            exit 1
+          fi
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
-          npx firebase-tools deploy --only firestore:indexes --project zync-2018a --non-interactive
+          npx firebase-tools@13 deploy --only firestore:indexes --project zync-2018a --non-interactive
           rm -f "$RUNNER_TEMP/sa.json"
