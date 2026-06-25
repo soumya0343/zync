@@ -24,6 +24,8 @@ jobs:
             rm -f "$RUNNER_TEMP/sa.json"
             exit 1
           fi
+          # Diagnostics: confirm which identity/project the secret resolves to (not secret values)
+          node -e "const j=require('$RUNNER_TEMP/sa.json'); console.log('SA client_email:', j.client_email); console.log('SA project_id:', j.project_id); console.log('private_key starts with header:', /^-----BEGIN/.test(j.private_key||''));"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
-          npx firebase-tools@13 deploy --only firestore:indexes --project zync-2018a --non-interactive
+          npx firebase-tools@13 deploy --only firestore:indexes --project zync-2018a --non-interactive --debug
           rm -f "$RUNNER_TEMP/sa.json"
